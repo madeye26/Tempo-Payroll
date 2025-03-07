@@ -19,7 +19,7 @@ const SalarySummary = ({
   loading = false,
 }: SalarySummaryProps) => {
   return (
-    <Card className="p-6 bg-white shadow-lg">
+    <Card className="p-6 bg-card/80 backdrop-blur-sm shadow-lg">
       <div className="space-y-6" dir="rtl">
         <div className="flex justify-between items-center">
           <h3 className="text-xl font-semibold text-right">ملخص الراتب</h3>

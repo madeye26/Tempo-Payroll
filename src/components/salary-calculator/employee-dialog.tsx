@@ -15,9 +15,9 @@ import { supabase } from "@/lib/supabase";
 
 const employeeSchema = z.object({
   name: z.string().min(3, "الاسم مطلوب"),
-  email: z.string().email("البريد الإلكتروني غير صالح"),
-  position: z.string().min(2, "المنصب مطلوب"),
-  department: z.string().min(2, "القسم مطلوب"),
+  monthly_incentives: z.string().transform(Number).pipe(z.number().min(0)),
+  position: z.string().optional(),
+  department: z.string().optional(),
   base_salary: z.string().transform(Number).pipe(z.number().min(0)),
   join_date: z.string().min(1, "تاريخ الانضمام مطلوب"),
 });
@@ -41,7 +41,7 @@ export function EmployeeDialog({
     resolver: zodResolver(employeeSchema),
     defaultValues: employee || {
       name: "",
-      email: "",
+      monthly_incentives: "0",
       position: "",
       department: "",
       base_salary: "",
@@ -51,20 +51,50 @@ export function EmployeeDialog({
 
   const onSubmit = async (data: EmployeeFormData) => {
     try {
+      console.log("Attempting to save employee data:", data);
+      console.log("Supabase client available:", !!supabase);
+
       if (supabase) {
         if (employee?.id) {
-          await supabase.from("employees").update(data).eq("id", employee.id);
+          console.log("Updating existing employee with ID:", employee.id);
+          const { data: result, error } = await supabase
+            .from("employees")
+            .update(data)
+            .eq("id", employee.id)
+            .select();
+
+          if (error) {
+            console.error("Error updating employee:", error);
+            throw error;
+          }
+
+          console.log("Employee updated successfully:", result);
         } else {
-          await supabase.from("employees").insert([data]);
+          console.log("Inserting new employee");
+          const { data: result, error } = await supabase
+            .from("employees")
+            .insert([data])
+            .select();
+
+          if (error) {
+            console.error("Error inserting employee:", error);
+            throw error;
+          }
+
+          console.log("Employee inserted successfully:", result);
         }
       } else {
-        console.log("Mock save:", data);
+        console.log("Mock save (Supabase not available):", data);
       }
+
       onOpenChange(false);
       onSuccess?.();
       form.reset();
     } catch (error) {
       console.error("Error saving employee:", error);
+      alert(
+        `حدث خطأ أثناء حفظ بيانات الموظف: ${error instanceof Error ? error.message : "خطأ غير معروف"}`,
+      );
     }
   };
 
@@ -88,16 +118,16 @@ export function EmployeeDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>البريد الإلكتروني</Label>
+            <Label>الحوافز الشهرية</Label>
             <Input
-              {...form.register("email")}
-              type="email"
+              {...form.register("monthly_incentives")}
+              type="number"
               className="text-right"
-              dir="ltr"
+              placeholder="0"
             />
-            {form.formState.errors.email && (
+            {form.formState.errors.monthly_incentives && (
               <p className="text-sm text-red-500">
-                {form.formState.errors.email.message}
+                {form.formState.errors.monthly_incentives.message}
               </p>
             )}
           </div>

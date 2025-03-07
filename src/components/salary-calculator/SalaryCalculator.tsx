@@ -79,11 +79,10 @@ const SalaryCalculator = () => {
     calculateTotals(monthlyVariables);
 
   return (
-    <div
-      className="flex flex-col space-y-6 p-6 bg-gray-50 min-h-screen"
-      dir="rtl"
-    >
-      <h1 className="text-3xl font-bold text-right">حاسبة الرواتب</h1>
+    <div className="flex flex-col space-y-8 p-6 min-h-screen" dir="rtl">
+      <h1 className="text-3xl font-bold text-right bg-gradient-to-l from-primary to-primary/70 bg-clip-text text-transparent inline-block">
+        حاسبة الرواتب
+      </h1>
 
       <EmployeeSection
         selectedEmployee={selectedEmployee}

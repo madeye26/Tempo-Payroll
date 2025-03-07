@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { Database } from "@/types/schema";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -8,9 +9,25 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn("Supabase credentials not found, using mock data");
 }
 
+// Log the environment variables (without exposing the full key)
+export const supabaseConfig = {
+  url: supabaseUrl || "Not configured",
+  hasKey: supabaseAnonKey ? "Yes" : "No",
+};
+
+console.log("Supabase configuration:", {
+  url: supabaseUrl || "Not configured",
+  hasKey: supabaseAnonKey ? "Yes" : "No",
+});
+
 export const supabase =
   supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey)
+    ? createClient<Database>(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+        },
+      })
     : null;
 
 // Mock data for development
@@ -18,7 +35,7 @@ export const mockEmployees = [
   {
     id: "1",
     name: "أحمد محمد",
-    email: "ahmed@example.com",
+    monthly_incentives: 500,
     position: "مهندس برمجيات",
     department: "تكنولوجيا المعلومات",
     base_salary: 5000,
@@ -29,7 +46,7 @@ export const mockEmployees = [
   {
     id: "2",
     name: "فاطمة علي",
-    email: "fatima@example.com",
+    monthly_incentives: 400,
     position: "محاسب",
     department: "المالية",
     base_salary: 4500,

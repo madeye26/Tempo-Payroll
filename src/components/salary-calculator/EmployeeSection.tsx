@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, UserPlus } from "lucide-react";
+import { Search, UserPlus, Edit2 } from "lucide-react";
 
 interface Employee {
   id: string;
@@ -18,6 +18,8 @@ interface Employee {
   position: string;
   department: string;
   basicSalary: number;
+  email?: string;
+  joinDate?: string;
 }
 
 import { useState } from "react";
@@ -33,37 +35,34 @@ const EmployeeSection = ({
   selectedEmployee,
   onEmployeeSelect = () => {},
 }: EmployeeSectionProps) => {
-  const { employees, loading } = useEmployees();
+  const { employees, loading, refetch } = useEmployees();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredEmployees = employees.filter((employee) =>
+    employee.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
 
   if (loading) {
     return <div>جاري التحميل...</div>;
   }
 
   return (
-    <Card className="p-6 bg-white">
+    <Card className="p-6 bg-card/80 backdrop-blur-sm">
       <div className="flex flex-col space-y-6">
         {/* Search and Add Employee Row */}
         <div className="flex justify-between items-center">
           <div className="flex-1 max-w-md relative">
             <div className="relative">
               <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
-              <Select
-                defaultValue={selectedEmployee?.id}
-                onValueChange={onEmployeeSelect}
-              >
-                <SelectTrigger className="w-full pr-10 text-right">
-                  <SelectValue placeholder="اختر موظف" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map((employee) => (
-                    <SelectItem key={employee.id} value={employee.id}>
-                      {employee.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                type="text"
+                placeholder="بحث عن موظف..."
+                className="pl-10 text-right"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
           <Button
@@ -76,6 +75,25 @@ const EmployeeSection = ({
             <UserPlus className="ml-2 h-5 w-5" />
             إضافة موظف جديد
           </Button>
+        </div>
+
+        {/* Employee Selection */}
+        <div className="w-full">
+          <Select
+            defaultValue={selectedEmployee?.id}
+            onValueChange={onEmployeeSelect}
+          >
+            <SelectTrigger className="w-full text-right">
+              <SelectValue placeholder="اختر موظف" />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredEmployees.map((employee) => (
+                <SelectItem key={employee.id} value={employee.id}>
+                  {employee.name} - {employee.position}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Employee Details Grid */}
@@ -113,6 +131,42 @@ const EmployeeSection = ({
                 className="text-right"
               />
             </div>
+            {selectedEmployee.monthly_incentives !== undefined && (
+              <div className="space-y-2">
+                <Label className="text-right block">الحوافز الشهرية</Label>
+                <Input
+                  value={`${selectedEmployee.monthly_incentives} ج.م`}
+                  readOnly
+                  className="text-right"
+                />
+              </div>
+            )}
+            {selectedEmployee.joinDate && (
+              <div className="space-y-2">
+                <Label className="text-right block">تاريخ الانضمام</Label>
+                <Input
+                  value={selectedEmployee.joinDate}
+                  readOnly
+                  className="text-right"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Edit Button */}
+        {selectedEmployee && (
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditingEmployee(selectedEmployee);
+                setDialogOpen(true);
+              }}
+            >
+              <Edit2 className="ml-2 h-4 w-4" />
+              تعديل البيانات
+            </Button>
           </div>
         )}
       </div>
@@ -123,6 +177,7 @@ const EmployeeSection = ({
         employee={editingEmployee || undefined}
         onSuccess={() => {
           setEditingEmployee(null);
+          refetch();
         }}
       />
     </Card>
