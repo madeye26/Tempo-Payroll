@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEmployees } from "@/lib/hooks/use-employees";
+import { supabase } from "@/lib/supabase";
 import { useSalaryCalculation } from "@/lib/hooks/use-salary-calculation";
 import {
   Select,
@@ -13,39 +15,179 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Save, Calculator, Printer, Calendar } from "lucide-react";
+import { Save, Calculator, Printer, Calendar, FileText } from "lucide-react";
 import { PrintPayslip } from "@/components/salary-calculator/print-payslip";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 
 export default function SalariesPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Check if we're editing an existing salary
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const editId = searchParams.get("edit");
+    if (editId) {
+      setEditingSalaryId(editId);
+    }
+  }, [location]);
   const { employees } = useEmployees();
 
   // Get advances data
-  const [advances, setAdvances] = useState<any[]>([
-    {
-      id: "1",
-      employeeId: "1",
-      employeeName: "أحمد محمد",
-      amount: 1000,
-      requestDate: "2024-05-01",
-      expectedRepaymentDate: "2024-06-01",
-      status: "pending",
-      remainingAmount: 1000,
-    },
-    {
-      id: "3",
-      employeeId: "1",
-      employeeName: "أحمد محمد",
-      amount: 800,
-      requestDate: "2024-05-10",
-      expectedRepaymentDate: "2024-06-10",
-      status: "pending",
-      remainingAmount: 800,
-    },
-  ]);
+  const [advances, setAdvances] = useState<any[]>([]);
+
+  // Fetch advances from database or initialize with employee data
+  useEffect(() => {
+    const fetchAdvances = async () => {
+      try {
+        if (supabase) {
+          const { data, error } = await supabase
+            .from("advances")
+            .select(
+              `
+              id,
+              employee_id,
+              amount,
+              remaining_amount,
+              request_date,
+              expected_repayment_date,
+              actual_repayment_date,
+              status,
+              employees(name)
+            `,
+            )
+            .eq("status", "pending");
+
+          if (error) {
+            console.error("Error fetching advances:", error);
+            return;
+          }
+
+          if (data && data.length > 0) {
+            const formattedAdvances = data.map((advance) => ({
+              id: advance.id,
+              employeeId: advance.employee_id,
+              employeeName: advance.employees?.name || "Unknown",
+              amount: advance.amount,
+              requestDate: advance.request_date,
+              expectedRepaymentDate: advance.expected_repayment_date,
+              actualRepaymentDate: advance.actual_repayment_date,
+              status: advance.status,
+              remainingAmount: advance.remaining_amount,
+            }));
+            setAdvances(formattedAdvances);
+          } else if (employees.length > 0) {
+            // If no advances in database but we have employees, create sample data
+            const initialAdvances = [];
+            if (employees[0]) {
+              initialAdvances.push({
+                id: "1",
+                employeeId: employees[0].id,
+                employeeName: employees[0].name,
+                amount: 1000,
+                requestDate: "2024-05-01",
+                expectedRepaymentDate: "2024-06-01",
+                status: "pending",
+                remainingAmount: 1000,
+              });
+
+              initialAdvances.push({
+                id: "3",
+                employeeId: employees[0].id,
+                employeeName: employees[0].name,
+                amount: 800,
+                requestDate: "2024-05-10",
+                expectedRepaymentDate: "2024-06-10",
+                status: "pending",
+                remainingAmount: 800,
+              });
+            }
+            setAdvances(initialAdvances);
+          }
+        } else if (employees.length > 0) {
+          // Fallback for when supabase is not available
+          const initialAdvances = [];
+          if (employees[0]) {
+            initialAdvances.push({
+              id: "1",
+              employeeId: employees[0].id,
+              employeeName: employees[0].name,
+              amount: 1000,
+              requestDate: "2024-05-01",
+              expectedRepaymentDate: "2024-06-01",
+              status: "pending",
+              remainingAmount: 1000,
+            });
+
+            initialAdvances.push({
+              id: "3",
+              employeeId: employees[0].id,
+              employeeName: employees[0].name,
+              amount: 800,
+              requestDate: "2024-05-10",
+              expectedRepaymentDate: "2024-06-10",
+              status: "pending",
+              remainingAmount: 800,
+            });
+          }
+          setAdvances(initialAdvances);
+        }
+      } catch (error) {
+        console.error("Error in fetchAdvances:", error);
+      }
+    };
+
+    fetchAdvances();
+  }, [employees, supabase]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [editingSalaryId, setEditingSalaryId] = useState<string | null>(null);
   const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId);
+
+  // Load saved salaries for editing
+  useEffect(() => {
+    if (editingSalaryId) {
+      const savedSalaries = JSON.parse(
+        localStorage.getItem("salaries") || "[]",
+      );
+      const salaryToEdit = savedSalaries.find(
+        (s: any) =>
+          s.date && new Date(s.date).getTime().toString() === editingSalaryId,
+      );
+
+      if (salaryToEdit) {
+        setSelectedEmployeeId(salaryToEdit.employeeId);
+        setSelectedMonth(salaryToEdit.month);
+        setSelectedYear(salaryToEdit.year.toString());
+
+        // Set form data from saved salary
+        setFormData({
+          baseSalary: salaryToEdit.baseSalary.toString(),
+          monthlyIncentives: salaryToEdit.monthlyIncentives.toString(),
+          bonus: salaryToEdit.bonus.toString(),
+          overtimeHours: salaryToEdit.overtimeHours.toString(),
+          overtimeValue: salaryToEdit.overtimeValue.toString(),
+          totalSalaryWithIncentives: (
+            salaryToEdit.baseSalary + salaryToEdit.monthlyIncentives
+          ).toString(),
+          totalSalary: (
+            salaryToEdit.baseSalary +
+            salaryToEdit.bonus +
+            salaryToEdit.overtimeValue
+          ).toString(),
+          purchases: salaryToEdit.purchases.toString(),
+          advances: salaryToEdit.advances.toString(),
+          absences: salaryToEdit.absences.toString(),
+          hourlyDeductions: salaryToEdit.hourlyDeductions.toString(),
+          penaltyDays: salaryToEdit.penaltyDays.toString(),
+          penalties: salaryToEdit.penalties.toString(),
+          netSalary: salaryToEdit.netSalary.toString(),
+          dailyRate: "",
+          dailyRateWithIncentives: "",
+        });
+      }
+    }
+  }, [editingSalaryId]);
   const [selectedMonth, setSelectedMonth] = useState(
     format(new Date(), "MMMM", { locale: ar }),
   );
@@ -168,45 +310,151 @@ export default function SalariesPage() {
     calculateSalary(formData);
   };
 
-  const handleSave = () => {
-    console.log("Saving salary calculation:", {
+  const handleSave = async () => {
+    if (!selectedEmployeeId) return;
+
+    const salaryData = {
       employeeId: selectedEmployeeId,
+      employeeName: selectedEmployee?.name || "",
       month: selectedMonth,
+      monthName:
+        months.find((m) => m.value === selectedMonth)?.label || selectedMonth,
       year: selectedYear,
-      ...formData,
-    });
+      baseSalary: parseFloat(formData.baseSalary) || 0,
+      monthlyIncentives: parseFloat(formData.monthlyIncentives) || 0,
+      bonus: parseFloat(formData.bonus) || 0,
+      overtimeHours: parseFloat(formData.overtimeHours) || 0,
+      overtimeValue: parseFloat(formData.overtimeValue) || 0,
+      purchases: parseFloat(formData.purchases) || 0,
+      advances: parseFloat(formData.advances) || 0,
+      absences: parseFloat(formData.absences) || 0,
+      hourlyDeductions: parseFloat(formData.hourlyDeductions) || 0,
+      penaltyDays: parseFloat(formData.penaltyDays) || 0,
+      penalties: parseFloat(formData.penalties) || 0,
+      netSalary: parseFloat(formData.netSalary) || 0,
+      date: new Date().toISOString(),
+    };
 
-    // If there are advances being deducted, update their status
-    if (parseFloat(formData.advances) > 0 && selectedEmployeeId) {
-      // This would update the advances in a real app
-      // For now, we'll just log it
-      console.log(
-        `Deducted ${formData.advances} from employee ${selectedEmployeeId}'s advances`,
+    try {
+      // Save to Supabase if available
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("salary_components")
+          .insert([
+            {
+              employee_id: salaryData.employeeId,
+              month: salaryData.month,
+              year: parseInt(salaryData.year),
+              bonus: salaryData.bonus,
+              allowances: salaryData.monthlyIncentives,
+              deductions: salaryData.hourlyDeductions + salaryData.penalties,
+              purchases: salaryData.purchases,
+              loans: salaryData.advances,
+              absences: salaryData.absences,
+              overtime_hours: salaryData.overtimeHours,
+              penalty_days: salaryData.penaltyDays,
+              net_salary: salaryData.netSalary,
+            },
+          ]);
+
+        if (error) {
+          console.error("Error saving salary:", error);
+          alert(`حدث خطأ أثناء حفظ الراتب: ${error.message}`);
+          return;
+        }
+      }
+
+      // Save to localStorage for persistence
+      const savedSalaries = JSON.parse(
+        localStorage.getItem("salaries") || "[]",
       );
+      savedSalaries.push(salaryData);
+      localStorage.setItem("salaries", JSON.stringify(savedSalaries));
 
-      // In a real implementation, you would:
-      // 1. Find the employee's pending advances
-      // 2. Mark them as paid or partially paid
-      // 3. Update the remaining amount for each advance
+      // If there are advances being deducted, update their status
+      if (parseFloat(formData.advances) > 0 && selectedEmployeeId) {
+        // Get the advances from localStorage
+        const savedAdvances = JSON.parse(
+          localStorage.getItem("advances") || "[]",
+        );
+        let remainingAdvanceAmount = parseFloat(formData.advances);
+
+        // Update each advance until the deducted amount is covered
+        const updatedAdvances = savedAdvances.map((advance) => {
+          if (
+            advance.employeeId === selectedEmployeeId &&
+            advance.status === "pending" &&
+            remainingAdvanceAmount > 0
+          ) {
+            const advanceAmount = advance.remainingAmount || advance.amount;
+
+            if (remainingAdvanceAmount >= advanceAmount) {
+              // Fully pay off this advance
+              remainingAdvanceAmount -= advanceAmount;
+              return {
+                ...advance,
+                status: "paid",
+                remainingAmount: 0,
+                actualRepaymentDate: new Date().toISOString().split("T")[0],
+              };
+            } else {
+              // Partially pay off this advance
+              const newRemainingAmount = advanceAmount - remainingAdvanceAmount;
+              remainingAdvanceAmount = 0;
+              return {
+                ...advance,
+                remainingAmount: newRemainingAmount,
+              };
+            }
+          }
+          return advance;
+        });
+
+        // Save updated advances
+        localStorage.setItem("advances", JSON.stringify(updatedAdvances));
+
+        // Update Supabase if available
+        if (supabase) {
+          // This would be implemented in a real app
+          console.log("Would update advances in Supabase");
+        }
+      }
+
+      alert("تم حفظ الراتب بنجاح");
+    } catch (error) {
+      console.error("Error in handleSave:", error);
+      alert(
+        `حدث خطأ غير متوقع: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   };
 
   const months = [
-    { value: "يناير", label: "يناير" },
-    { value: "فبراير", label: "فبراير" },
-    { value: "مارس", label: "مارس" },
-    { value: "أبريل", label: "أبريل" },
-    { value: "مايو", label: "مايو" },
-    { value: "يونيو", label: "يونيو" },
-    { value: "يوليو", label: "يوليو" },
-    { value: "أغسطس", label: "أغسطس" },
-    { value: "سبتمبر", label: "سبتمبر" },
-    { value: "أكتوبر", label: "أكتوبر" },
-    { value: "نوفمبر", label: "نوفمبر" },
-    { value: "ديسمبر", label: "ديسمبر" },
+    { value: "1", label: "يناير" },
+    { value: "2", label: "فبراير" },
+    { value: "3", label: "مارس" },
+    { value: "4", label: "أبريل" },
+    { value: "5", label: "مايو" },
+    { value: "6", label: "يونيو" },
+    { value: "7", label: "يوليو" },
+    { value: "8", label: "أغسطس" },
+    { value: "9", label: "سبتمبر" },
+    { value: "10", label: "أكتوبر" },
+    { value: "11", label: "نوفمبر" },
+    { value: "12", label: "ديسمبر" },
   ];
 
-  const years = ["2022", "2023", "2024", "2025"];
+  const years = [
+    "2022",
+    "2023",
+    "2024",
+    "2025",
+    "2026",
+    "2027",
+    "2028",
+    "2029",
+    "2030",
+  ];
 
   const payslipData = selectedEmployee
     ? {
@@ -253,6 +501,13 @@ export default function SalariesPage() {
           حساب الرواتب
         </h1>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => navigate("/salaries/history")}
+          >
+            <FileText className="ml-2 h-4 w-4" />
+            سجل الرواتب
+          </Button>
           <Button
             variant="outline"
             onClick={() => setPrintDialogOpen(true)}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { StatsCard } from "./dashboard/stats-card";
 import { RecentActivities } from "./dashboard/recent-activities";
@@ -6,6 +6,7 @@ import { SalaryChart } from "./dashboard/salary-chart";
 import { EmployeeStatus } from "./dashboard/employee-status";
 import { Users, CreditCard, Calendar, TrendingUp } from "lucide-react";
 import { useEmployees } from "@/lib/hooks/use-employees";
+import { supabase } from "@/lib/supabase";
 
 const Home = () => {
   const { employees } = useEmployees();
@@ -46,24 +47,216 @@ const Home = () => {
     },
   ];
 
-  const chartData = [
+  const [chartData, setChartData] = useState([
     { month: "يناير", totalSalaries: 25000, totalDeductions: 5000 },
     { month: "فبراير", totalSalaries: 27000, totalDeductions: 5500 },
     { month: "مارس", totalSalaries: 26000, totalDeductions: 4800 },
     { month: "أبريل", totalSalaries: 28000, totalDeductions: 6000 },
     { month: "مايو", totalSalaries: 30000, totalDeductions: 6200 },
     { month: "يونيو", totalSalaries: 29000, totalDeductions: 5800 },
-  ];
+  ]);
 
-  const employeeStatusData = employees.slice(0, 5).map((employee) => ({
-    id: employee.id,
-    name: employee.name,
-    position: employee.position,
-    status: ["present", "absent", "leave", "late"][
-      Math.floor(Math.random() * 4)
-    ] as "present" | "absent" | "leave" | "late",
-    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${employee.name}`,
-  }));
+  // Fetch salary data from database
+  useEffect(() => {
+    const fetchSalaryData = async () => {
+      try {
+        if (supabase) {
+          const { data, error } = await supabase
+            .from("salary_components")
+            .select("*")
+            .order("year", { ascending: true })
+            .order("month", { ascending: true });
+
+          if (error) {
+            console.error("Error fetching salary data:", error);
+            return;
+          }
+
+          if (data && data.length > 0) {
+            // Process the data to match the chart format
+            const processedData = [];
+            const months = [
+              "يناير",
+              "فبراير",
+              "مارس",
+              "أبريل",
+              "مايو",
+              "يونيو",
+              "يوليو",
+              "أغسطس",
+              "سبتمبر",
+              "أكتوبر",
+              "نوفمبر",
+              "ديسمبر",
+            ];
+
+            // Group by month and year
+            const groupedData = {};
+            data.forEach((item) => {
+              const key = `${item.year}-${item.month}`;
+              if (!groupedData[key]) {
+                groupedData[key] = {
+                  month: months[parseInt(item.month) - 1] || item.month,
+                  year: item.year,
+                  totalSalaries: 0,
+                  totalDeductions: 0,
+                };
+              }
+
+              // Sum up the values
+              groupedData[key].totalSalaries +=
+                item.net_salary + (item.deductions || 0);
+              groupedData[key].totalDeductions += item.deductions || 0;
+            });
+
+            // Convert to array and sort
+            const chartData = Object.values(groupedData);
+            chartData.sort((a, b) => {
+              if (a.year !== b.year) return a.year - b.year;
+              return months.indexOf(a.month) - months.indexOf(b.month);
+            });
+
+            // Take the last 6 months or all if less than 6
+            const recentData = chartData.slice(-6);
+            if (recentData.length > 0) {
+              setChartData(recentData);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error in fetchSalaryData:", error);
+      }
+    };
+
+    fetchSalaryData();
+  }, [supabase]);
+
+  // Get employee status from attendance records for today
+  const [employeeStatusData, setEmployeeStatusData] = useState([]);
+
+  useEffect(() => {
+    const fetchAttendanceData = async () => {
+      try {
+        if (supabase) {
+          const today = new Date().toISOString().split("T")[0];
+          const { data, error } = await supabase
+            .from("attendance")
+            .select(
+              `
+              id,
+              employee_id,
+              status,
+              employees(id, name, position)
+            `,
+            )
+            .eq("date", today);
+
+          if (error) {
+            console.error("Error fetching attendance:", error);
+            return;
+          }
+
+          // If we have attendance data, use it
+          if (data && data.length > 0) {
+            const statusData = data.map((record) => ({
+              id: record.employee_id,
+              name: record.employees?.name || "Unknown",
+              position: record.employees?.position || "Employee",
+              status: record.status,
+              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${record.employees?.name || record.employee_id}`,
+            }));
+            setEmployeeStatusData(statusData);
+          } else {
+            // If no attendance data, use a consistent status for each employee
+            const statusData = employees.slice(0, 5).map((employee, index) => ({
+              id: employee.id,
+              name: employee.name,
+              position: employee.position || "Employee",
+              status: ["present", "present", "leave", "late"][index % 4] as
+                | "present"
+                | "absent"
+                | "leave"
+                | "late",
+              avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${employee.name}`,
+            }));
+            setEmployeeStatusData(statusData);
+          }
+        } else {
+          // Fallback for when supabase is not available
+          const statusData = employees.slice(0, 5).map((employee, index) => ({
+            id: employee.id,
+            name: employee.name,
+            position: employee.position || "Employee",
+            status: ["present", "present", "leave", "late"][index % 4] as
+              | "present"
+              | "absent"
+              | "leave"
+              | "late",
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${employee.name}`,
+          }));
+          setEmployeeStatusData(statusData);
+        }
+      } catch (error) {
+        console.error("Error in fetchAttendanceData:", error);
+        // Fallback
+        const statusData = employees.slice(0, 5).map((employee, index) => ({
+          id: employee.id,
+          name: employee.name,
+          position: employee.position || "Employee",
+          status: ["present", "present", "leave", "late"][index % 4] as
+            | "present"
+            | "absent"
+            | "leave"
+            | "late",
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${employee.name}`,
+        }));
+        setEmployeeStatusData(statusData);
+      }
+    };
+
+    if (employees.length > 0) {
+      fetchAttendanceData();
+    }
+  }, [employees, supabase]);
+
+  // Calculate dashboard stats from real data
+  const [dashboardStats, setDashboardStats] = useState({
+    totalSalaries: 0,
+    pendingAdvances: 0,
+    currentLeaves: 0,
+  });
+
+  useEffect(() => {
+    // Calculate total salaries
+    const savedSalaries = JSON.parse(localStorage.getItem("salaries") || "[]");
+    const totalSalaries = savedSalaries.reduce(
+      (sum: number, salary: any) => sum + (parseFloat(salary.netSalary) || 0),
+      0,
+    );
+
+    // Calculate pending advances
+    const savedAdvances = JSON.parse(localStorage.getItem("advances") || "[]");
+    const pendingAdvances = savedAdvances.filter(
+      (adv: any) => adv.status === "pending",
+    ).length;
+
+    // Calculate current leaves
+    const savedAbsences = JSON.parse(localStorage.getItem("absences") || "[]");
+    const currentLeaves = savedAbsences.filter((absence: any) => {
+      const today = new Date().toISOString().split("T")[0];
+      return (
+        absence.startDate <= today &&
+        absence.endDate >= today &&
+        absence.status === "approved"
+      );
+    }).length;
+
+    setDashboardStats({
+      totalSalaries,
+      pendingAdvances,
+      currentLeaves,
+    });
+  }, []);
 
   return (
     <div className="space-y-8" dir="rtl">
@@ -77,25 +270,25 @@ const Home = () => {
           value={employees.length}
           icon={<Users className="h-8 w-8" />}
           trend="up"
-          trendValue="2% من الشهر الماضي"
+          trendValue={`${employees.length > 0 ? Math.round((employees.length / 10) * 100) : 0}% من الشهر الماضي`}
         />
         <StatsCard
           title="إجمالي الرواتب"
-          value="30,000 ج.م"
+          value={`${dashboardStats.totalSalaries.toLocaleString()} ج.م`}
           icon={<CreditCard className="h-8 w-8" />}
           trend="up"
           trendValue="5% من الشهر الماضي"
         />
         <StatsCard
           title="السلف المعلقة"
-          value="3"
+          value={dashboardStats.pendingAdvances.toString()}
           icon={<TrendingUp className="h-8 w-8" />}
-          trend="down"
-          trendValue="10% من الشهر الماضي"
+          trend={dashboardStats.pendingAdvances > 2 ? "down" : "up"}
+          trendValue={`${dashboardStats.pendingAdvances > 2 ? "10% من الشهر الماضي" : "5% من الشهر الماضي"}`}
         />
         <StatsCard
           title="الإجازات الحالية"
-          value="2"
+          value={dashboardStats.currentLeaves.toString()}
           icon={<Calendar className="h-8 w-8" />}
           trend="neutral"
           trendValue="نفس الشهر الماضي"

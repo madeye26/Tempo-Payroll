@@ -1,8 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSalaryCalculation } from "@/lib/hooks/use-salary-calculation";
 import EmployeeSection from "./EmployeeSection";
 import MonthlyVariablesForm from "./MonthlyVariablesForm";
 import SalarySummary from "./SalarySummary";
+import { useLocalStorage } from "@/lib/hooks/use-local-storage";
+import { format } from "date-fns";
+import { ar } from "date-fns/locale";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Employee {
   id: string;
@@ -65,13 +69,56 @@ const SalaryCalculator = () => {
   const [monthlyVariables, setMonthlyVariables] = useState<MonthlyVariables>(
     defaultMonthlyVariables,
   );
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    format(new Date(), "MMMM", { locale: ar }),
+  );
+  const [selectedYear, setSelectedYear] = useState<string>(
+    new Date().getFullYear().toString(),
+  );
+  const { toast } = useToast();
   const { calculateTotals, saveSalaryCalculation, loading } =
     useSalaryCalculation(selectedEmployee);
+
+  // Load saved employees from localStorage
+  const [savedEmployees, setSavedEmployees] = useLocalStorage(
+    "employees",
+    defaultEmployees,
+  );
+
+  useEffect(() => {
+    // If we have saved employees, use the first one as default
+    if (savedEmployees.length > 0 && !selectedEmployee) {
+      setSelectedEmployee(savedEmployees[0]);
+    }
+  }, [savedEmployees]);
+
   const handleSave = async () => {
+    if (!selectedEmployee) {
+      toast({
+        title: "خطأ",
+        description: "الرجاء اختيار موظف أولاً",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      await saveSalaryCalculation(monthlyVariables);
+      await saveSalaryCalculation(
+        monthlyVariables,
+        selectedMonth,
+        selectedYear,
+      );
+      toast({
+        title: "تم الحفظ بنجاح",
+        description: "تم حفظ بيانات الراتب بنجاح",
+      });
     } catch (error) {
       console.error("Error saving salary calculation:", error);
+      toast({
+        title: "خطأ",
+        description: `حدث خطأ أثناء حفظ الراتب: ${error instanceof Error ? error.message : "خطأ غير معروف"}`,
+        variant: "destructive",
+      });
     }
   };
 
@@ -95,6 +142,10 @@ const SalaryCalculator = () => {
       <MonthlyVariablesForm
         initialValues={monthlyVariables}
         onSubmit={setMonthlyVariables}
+        onMonthChange={setSelectedMonth}
+        onYearChange={setSelectedYear}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
       />
 
       <SalarySummary

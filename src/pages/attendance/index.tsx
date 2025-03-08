@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { AttendanceLog } from "@/components/attendance/attendance-log";
 
 interface Absence {
   id: string;
@@ -62,28 +63,43 @@ export default function AttendancePage() {
     "annual",
   );
 
-  const [absences, setAbsences] = useState<Absence[]>([
-    {
-      id: "1",
-      employeeId: "1",
-      employeeName: "أحمد محمد",
-      startDate: "2024-05-01",
-      endDate: "2024-05-05",
-      reason: "إجازة سنوية",
-      type: "annual",
-      status: "approved",
-    },
-    {
-      id: "2",
-      employeeId: "2",
-      employeeName: "فاطمة علي",
-      startDate: "2024-05-10",
-      endDate: "2024-05-12",
-      reason: "إجازة مرضية",
-      type: "sick",
-      status: "pending",
-    },
-  ]);
+  const [absences, setAbsences] = useState<Absence[]>([]);
+
+  // Fetch absences from localStorage or initialize with employee data
+  useEffect(() => {
+    const savedAbsences = localStorage.getItem("absences");
+    if (savedAbsences) {
+      setAbsences(JSON.parse(savedAbsences));
+    } else if (employees.length > 0) {
+      const initialAbsences = [];
+      if (employees[0]) {
+        initialAbsences.push({
+          id: "1",
+          employeeId: employees[0].id,
+          employeeName: employees[0].name,
+          startDate: "2024-05-01",
+          endDate: "2024-05-05",
+          reason: "إجازة سنوية",
+          type: "annual",
+          status: "approved",
+        });
+      }
+      if (employees[1]) {
+        initialAbsences.push({
+          id: "2",
+          employeeId: employees[1].id,
+          employeeName: employees[1].name,
+          startDate: "2024-05-10",
+          endDate: "2024-05-12",
+          reason: "إجازة مرضية",
+          type: "sick",
+          status: "pending",
+        });
+      }
+      setAbsences(initialAbsences);
+      localStorage.setItem("absences", JSON.stringify(initialAbsences));
+    }
+  }, [employees]);
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingAbsence, setEditingAbsence] = useState<Absence | null>(null);
@@ -109,7 +125,10 @@ export default function AttendancePage() {
       status: "pending",
     };
 
-    setAbsences([...absences, newAbsence]);
+    const updatedAbsences = [...absences, newAbsence];
+    setAbsences(updatedAbsences);
+    localStorage.setItem("absences", JSON.stringify(updatedAbsences));
+
     setSelectedEmployee("");
     setStartDate(new Date());
     setEndDate(new Date());
@@ -127,6 +146,8 @@ export default function AttendancePage() {
     );
 
     setAbsences(updatedAbsences);
+    localStorage.setItem("absences", JSON.stringify(updatedAbsences));
+
     setEditDialogOpen(false);
     setEditingAbsence(null);
     setNewStatus("pending");
@@ -140,6 +161,8 @@ export default function AttendancePage() {
     );
 
     setAbsences(updatedAbsences);
+    localStorage.setItem("absences", JSON.stringify(updatedAbsences));
+
     setDeleteDialogOpen(false);
     setAbsenceToDelete(null);
   };
@@ -195,30 +218,34 @@ export default function AttendancePage() {
     },
     {
       id: "actions",
+      header: "الإجراءات",
       cell: ({ row }) => {
         const absence = row.original;
         return (
           <div className="flex items-center justify-end gap-2">
             <Button
-              variant="ghost"
-              size="icon"
+              variant="outline"
+              size="sm"
               onClick={() => {
                 setEditingAbsence(absence);
                 setNewStatus(absence.status);
                 setEditDialogOpen(true);
               }}
             >
-              <Edit className="h-4 w-4" />
+              <Edit className="ml-2 h-4 w-4" />
+              تعديل
             </Button>
             <Button
-              variant="ghost"
-              size="icon"
+              variant="outline"
+              size="sm"
+              className="text-destructive hover:bg-destructive/10"
               onClick={() => {
                 setAbsenceToDelete(absence.id);
                 setDeleteDialogOpen(true);
               }}
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className="ml-2 h-4 w-4" />
+              حذف
             </Button>
           </div>
         );
@@ -366,10 +393,7 @@ export default function AttendancePage() {
         </TabsContent>
 
         <TabsContent value="attendance" className="space-y-6 mt-6">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">سجل الحضور والانصراف</h2>
-            <p className="text-muted-foreground">قريباً...</p>
-          </Card>
+          <AttendanceLog />
         </TabsContent>
       </Tabs>
 
@@ -379,6 +403,19 @@ export default function AttendancePage() {
             <DialogTitle>تحديث حالة الإجازة</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {editingAbsence && (
+              <div className="mb-4">
+                <p className="font-medium">
+                  الموظف: {editingAbsence.employeeName}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  من {editingAbsence.startDate} إلى {editingAbsence.endDate}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  السبب: {editingAbsence.reason}
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>الحالة</Label>
               <Select

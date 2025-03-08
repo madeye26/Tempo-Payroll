@@ -47,23 +47,33 @@ export function SalaryChart({ data }: SalaryChartProps) {
               key={index}
               className="flex-1 flex flex-col items-center gap-2"
             >
-              <div className="w-full flex justify-between items-end h-[250px]">
+              <div className="w-full flex justify-between items-end h-[250px] relative group">
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/5 rounded-t pointer-events-none">
+                  <div className="bg-background/90 p-2 rounded shadow-md text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-primary rounded-full"></div>
+                      <span>{item.totalSalaries.toLocaleString()} ج.م</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-destructive rounded-full"></div>
+                      <span>{item.totalDeductions.toLocaleString()} ج.م</span>
+                    </div>
+                  </div>
+                </div>
                 <div
-                  className="w-5 bg-primary rounded-t"
+                  className="w-5 bg-gradient-to-t from-primary/80 to-primary rounded-t shadow-lg transition-all duration-300 hover:w-6 group-hover:from-primary/90 group-hover:to-primary"
                   style={{
                     height: `${(item.totalSalaries / maxValue) * 100}%`,
                   }}
                 ></div>
                 <div
-                  className="w-5 bg-destructive rounded-t"
+                  className="w-5 bg-gradient-to-t from-destructive/80 to-destructive rounded-t shadow-lg transition-all duration-300 hover:w-6 group-hover:from-destructive/90 group-hover:to-destructive"
                   style={{
                     height: `${(item.totalDeductions / maxValue) * 100}%`,
                   }}
                 ></div>
               </div>
-              <span className="text-xs text-muted-foreground">
-                {item.month}
-              </span>
+              <span className="text-xs font-medium">{item.month}</span>
             </div>
           ))}
         </div>

@@ -24,10 +24,11 @@ import { Badge } from "@/components/ui/badge";
 interface Employee {
   id: string;
   name: string;
-  email: string;
-  position: string;
-  department: string;
+  email?: string;
+  position?: string;
+  department?: string;
   base_salary: number;
+  monthly_incentives?: number;
   join_date: string;
   status?: "active" | "inactive";
   rating?: number;
@@ -82,15 +83,22 @@ export default function EmployeesPage() {
     {
       accessorKey: "position",
       header: "المنصب",
+      cell: ({ row }) => row.getValue("position") || "--",
     },
     {
       accessorKey: "department",
       header: "القسم",
+      cell: ({ row }) => row.getValue("department") || "--",
     },
     {
       accessorKey: "base_salary",
       header: "الراتب الأساسي",
       cell: ({ row }) => `${row.getValue("base_salary")} ج.م`,
+    },
+    {
+      accessorKey: "monthly_incentives",
+      header: "الحوافز الشهرية",
+      cell: ({ row }) => `${row.original.monthly_incentives || 0} ج.م`,
     },
     {
       accessorKey: "join_date",

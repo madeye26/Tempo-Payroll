@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,39 +50,57 @@ export default function AdvancesPage() {
   const [amount, setAmount] = useState("");
   const [expectedRepaymentDate, setExpectedRepaymentDate] = useState("");
 
-  const [advances, setAdvances] = useState<Advance[]>([
-    {
-      id: "1",
-      employeeId: "1",
-      employeeName: "أحمد محمد",
-      amount: 1000,
-      requestDate: "2024-05-01",
-      expectedRepaymentDate: "2024-06-01",
-      status: "pending",
-      remainingAmount: 1000,
-    },
-    {
-      id: "2",
-      employeeId: "2",
-      employeeName: "فاطمة علي",
-      amount: 500,
-      requestDate: "2024-04-15",
-      expectedRepaymentDate: "2024-05-15",
-      status: "paid",
-      actualRepaymentDate: "2024-05-15",
-      remainingAmount: 0,
-    },
-    {
-      id: "3",
-      employeeId: "1",
-      employeeName: "أحمد محمد",
-      amount: 800,
-      requestDate: "2024-05-10",
-      expectedRepaymentDate: "2024-06-10",
-      status: "pending",
-      remainingAmount: 800,
-    },
-  ]);
+  const [advances, setAdvances] = useState<Advance[]>([]);
+
+  // Fetch advances from localStorage or initialize with employee data
+  useEffect(() => {
+    const savedAdvances = localStorage.getItem("advances");
+    if (savedAdvances) {
+      setAdvances(JSON.parse(savedAdvances));
+    } else if (employees.length > 0) {
+      const initialAdvances = [];
+      if (employees[0]) {
+        initialAdvances.push({
+          id: "1",
+          employeeId: employees[0].id,
+          employeeName: employees[0].name,
+          amount: 1000,
+          requestDate: "2024-05-01",
+          expectedRepaymentDate: "2024-06-01",
+          status: "pending",
+          remainingAmount: 1000,
+        });
+
+        initialAdvances.push({
+          id: "3",
+          employeeId: employees[0].id,
+          employeeName: employees[0].name,
+          amount: 800,
+          requestDate: "2024-05-10",
+          expectedRepaymentDate: "2024-06-10",
+          status: "pending",
+          remainingAmount: 800,
+        });
+      }
+
+      if (employees[1]) {
+        initialAdvances.push({
+          id: "2",
+          employeeId: employees[1].id,
+          employeeName: employees[1].name,
+          amount: 500,
+          requestDate: "2024-04-15",
+          expectedRepaymentDate: "2024-05-15",
+          status: "paid",
+          actualRepaymentDate: "2024-05-15",
+          remainingAmount: 0,
+        });
+      }
+
+      setAdvances(initialAdvances);
+      localStorage.setItem("advances", JSON.stringify(initialAdvances));
+    }
+  }, [employees]);
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingAdvance, setEditingAdvance] = useState<Advance | null>(null);
@@ -108,7 +126,10 @@ export default function AdvancesPage() {
       status: "pending",
     };
 
-    setAdvances([...advances, newAdvance]);
+    const updatedAdvances = [...advances, newAdvance];
+    setAdvances(updatedAdvances);
+    localStorage.setItem("advances", JSON.stringify(updatedAdvances));
+
     setSelectedEmployee("");
     setAmount("");
     setExpectedRepaymentDate("");
@@ -133,6 +154,8 @@ export default function AdvancesPage() {
     });
 
     setAdvances(updatedAdvances);
+    localStorage.setItem("advances", JSON.stringify(updatedAdvances));
+
     setEditDialogOpen(false);
     setEditingAdvance(null);
     setNewStatus("pending");
@@ -147,6 +170,8 @@ export default function AdvancesPage() {
     );
 
     setAdvances(updatedAdvances);
+    localStorage.setItem("advances", JSON.stringify(updatedAdvances));
+
     setDeleteDialogOpen(false);
     setAdvanceToDelete(null);
   };

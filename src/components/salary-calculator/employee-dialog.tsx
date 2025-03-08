@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +13,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/lib/supabase";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { ErrorMessage } from "@/components/ui/error-message";
 
 const employeeSchema = z.object({
   name: z.string().min(3, "الاسم مطلوب"),
@@ -37,6 +40,7 @@ export function EmployeeDialog({
   employee,
   onSuccess,
 }: EmployeeDialogProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const form = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
     defaultValues: employee || {
@@ -50,6 +54,7 @@ export function EmployeeDialog({
   });
 
   const onSubmit = async (data: EmployeeFormData) => {
+    setIsSubmitting(true);
     try {
       console.log("Attempting to save employee data:", data);
       console.log("Supabase client available:", !!supabase);
@@ -84,6 +89,29 @@ export function EmployeeDialog({
           console.log("Employee inserted successfully:", result);
         }
       } else {
+        // Save to localStorage for persistence
+        const savedEmployees = JSON.parse(
+          localStorage.getItem("employees") || "[]",
+        );
+        const newEmployee = {
+          ...data,
+          id: employee?.id || Date.now().toString(),
+          created_at: new Date().toISOString(),
+          status: "active",
+        };
+
+        if (employee?.id) {
+          // Update existing employee
+          const updatedEmployees = savedEmployees.map((emp: any) =>
+            emp.id === employee.id ? newEmployee : emp,
+          );
+          localStorage.setItem("employees", JSON.stringify(updatedEmployees));
+        } else {
+          // Add new employee
+          savedEmployees.push(newEmployee);
+          localStorage.setItem("employees", JSON.stringify(savedEmployees));
+        }
+
         console.log("Mock save (Supabase not available):", data);
       }
 
@@ -92,9 +120,12 @@ export function EmployeeDialog({
       form.reset();
     } catch (error) {
       console.error("Error saving employee:", error);
-      alert(
-        `حدث خطأ أثناء حفظ بيانات الموظف: ${error instanceof Error ? error.message : "خطأ غير معروف"}`,
-      );
+      form.setError("root", {
+        type: "manual",
+        message: `حدث خطأ أثناء حفظ بيانات الموظف: ${error instanceof Error ? error.message : "خطأ غير معروف"}`,
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -180,15 +211,36 @@ export function EmployeeDialog({
             )}
           </div>
 
+          {form.formState.errors.root && (
+            <div className="mb-4">
+              <ErrorMessage
+                message={
+                  form.formState.errors.root.message || "حدث خطأ غير متوقع"
+                }
+              />
+            </div>
+          )}
           <DialogFooter className="gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
             >
               إلغاء
             </Button>
-            <Button type="submit">{employee?.id ? "تحديث" : "إضافة"}</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <LoadingSpinner size="sm" className="ml-2" />
+                  جاري الحفظ...
+                </>
+              ) : employee?.id ? (
+                "تحديث"
+              ) : (
+                "إضافة"
+              )}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

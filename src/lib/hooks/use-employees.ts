@@ -22,12 +22,18 @@ export function useEmployees() {
         setEmployees(data || []);
       } else {
         // Use mock data if Supabase is not configured
-        setEmployees(mockEmployees);
+        const savedEmployees = JSON.parse(
+          localStorage.getItem("employees") || JSON.stringify(mockEmployees),
+        );
+        setEmployees(savedEmployees);
       }
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
       // Fallback to mock data on error
-      setEmployees(mockEmployees);
+      const savedEmployees = JSON.parse(
+        localStorage.getItem("employees") || JSON.stringify(mockEmployees),
+      );
+      setEmployees(savedEmployees);
     } finally {
       setLoading(false);
     }
@@ -36,19 +42,64 @@ export function useEmployees() {
   useEffect(() => {
     fetchEmployees();
 
-    const channel = supabase
-      .channel("employees_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "employees" },
-        () => fetchEmployees(),
-      )
-      .subscribe();
+    // Set up realtime subscription if supabase is available
+    if (supabase) {
+      const channel = supabase
+        .channel("employees_changes")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "employees" },
+          () => fetchEmployees(),
+        )
+        .subscribe();
 
-    return () => {
-      channel.unsubscribe();
-    };
+      return () => {
+        channel.unsubscribe();
+      };
+    }
   }, []);
 
-  return { employees, loading, error, refetch: fetchEmployees };
+  const refetch = async () => {
+    await fetchEmployees();
+  };
+
+  const addEmployee = (employee: Employee) => {
+    const newEmployee = {
+      ...employee,
+      id: employee.id || Date.now().toString(),
+      created_at: new Date().toISOString(),
+      status: "active",
+    };
+
+    const updatedEmployees = [...employees, newEmployee];
+    setEmployees(updatedEmployees);
+    localStorage.setItem("employees", JSON.stringify(updatedEmployees));
+
+    return newEmployee;
+  };
+
+  const updateEmployee = (id: string, updatedData: Partial<Employee>) => {
+    const updatedEmployees = employees.map((emp) =>
+      emp.id === id ? { ...emp, ...updatedData } : emp,
+    );
+
+    setEmployees(updatedEmployees);
+    localStorage.setItem("employees", JSON.stringify(updatedEmployees));
+  };
+
+  const deleteEmployee = (id: string) => {
+    const updatedEmployees = employees.filter((emp) => emp.id !== id);
+    setEmployees(updatedEmployees);
+    localStorage.setItem("employees", JSON.stringify(updatedEmployees));
+  };
+
+  return {
+    employees,
+    loading,
+    error,
+    refetch,
+    addEmployee,
+    updateEmployee,
+    deleteEmployee,
+  };
 }

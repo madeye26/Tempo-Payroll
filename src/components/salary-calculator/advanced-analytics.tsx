@@ -143,52 +143,173 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
                     {chartType === "bar" && (
                       <>
                         <div
-                          className="w-5 bg-primary rounded-t"
+                          className="w-5 bg-gradient-to-t from-primary/80 to-primary rounded-t shadow-lg transition-all duration-300 hover:w-6 hover:from-primary/90 hover:to-primary relative group"
+                          style={{
+                            height: `${(item.totalSalaries / maxValue) * 100}%`,
+                          }}
+                        >
+                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-background/90 px-2 py-1 rounded shadow-md text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            {item.totalSalaries.toLocaleString()} ج.م
+                          </div>
+                        </div>
+                        <div
+                          className="w-5 bg-gradient-to-t from-destructive/80 to-destructive rounded-t shadow-lg transition-all duration-300 hover:w-6 hover:from-destructive/90 hover:to-destructive relative group"
+                          style={{
+                            height: `${(item.totalDeductions / maxValue) * 100}%`,
+                          }}
+                        >
+                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-background/90 px-2 py-1 rounded shadow-md text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            {item.totalDeductions.toLocaleString()} ج.م
+                          </div>
+                        </div>
+                        <div
+                          className="w-5 bg-gradient-to-t from-amber-500/80 to-amber-500 rounded-t shadow-lg transition-all duration-300 hover:w-6 hover:from-amber-500/90 hover:to-amber-500 relative group"
+                          style={{
+                            height: `${(item.totalAdvances / maxValue) * 100}%`,
+                          }}
+                        >
+                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-background/90 px-2 py-1 rounded shadow-md text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            {item.totalAdvances.toLocaleString()} ج.م
+                          </div>
+                        </div>
+                      </>
+                    )}
+                    {chartType === "line" && (
+                      <div className="w-full h-full relative">
+                        {/* Salary line */}
+                        <div
+                          className="absolute bottom-0 left-1/2 w-3 h-3 bg-primary rounded-full shadow-md z-10 transform -translate-x-1/2 transition-all duration-300 hover:w-4 hover:h-4 hover:bg-primary-foreground hover:border-2 hover:border-primary"
+                          style={{
+                            bottom: `${(item.totalSalaries / maxValue) * 100}%`,
+                          }}
+                        >
+                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-background/90 px-2 py-1 rounded shadow-md text-xs opacity-0 hover:opacity-100 transition-opacity whitespace-nowrap">
+                            {item.totalSalaries.toLocaleString()} ج.م
+                          </div>
+                        </div>
+
+                        {/* Deductions line */}
+                        <div
+                          className="absolute bottom-0 left-1/2 w-3 h-3 bg-destructive rounded-full shadow-md z-10 transform -translate-x-1/2 transition-all duration-300 hover:w-4 hover:h-4 hover:bg-destructive-foreground hover:border-2 hover:border-destructive"
+                          style={{
+                            bottom: `${(item.totalDeductions / maxValue) * 100}%`,
+                            left: "75%",
+                          }}
+                        >
+                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-background/90 px-2 py-1 rounded shadow-md text-xs opacity-0 hover:opacity-100 transition-opacity whitespace-nowrap">
+                            {item.totalDeductions.toLocaleString()} ج.م
+                          </div>
+                        </div>
+
+                        {/* Advances line */}
+                        <div
+                          className="absolute bottom-0 left-1/2 w-3 h-3 bg-amber-500 rounded-full shadow-md z-10 transform -translate-x-1/2 transition-all duration-300 hover:w-4 hover:h-4 hover:bg-amber-300 hover:border-2 hover:border-amber-500"
+                          style={{
+                            bottom: `${(item.totalAdvances / maxValue) * 100}%`,
+                            left: "25%",
+                          }}
+                        >
+                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-background/90 px-2 py-1 rounded shadow-md text-xs opacity-0 hover:opacity-100 transition-opacity whitespace-nowrap">
+                            {item.totalAdvances.toLocaleString()} ج.م
+                          </div>
+                        </div>
+
+                        {/* Connection lines */}
+                        {index < data.length - 1 && (
+                          <>
+                            <div
+                              className="absolute bottom-0 left-1/2 h-0.5 bg-gradient-to-r from-primary to-primary/70 shadow-sm"
+                              style={{
+                                bottom: `${(item.totalSalaries / maxValue) * 100}%`,
+                                width: "100%",
+                                transformOrigin: "left bottom",
+                                transform: `rotate(${
+                                  Math.atan2(
+                                    (data[index + 1].totalSalaries / maxValue) *
+                                      100 -
+                                      (item.totalSalaries / maxValue) * 100,
+                                    100,
+                                  ) *
+                                  (180 / Math.PI)
+                                }deg)`,
+                              }}
+                            ></div>
+
+                            <div
+                              className="absolute bottom-0 left-3/4 h-0.5 bg-gradient-to-r from-destructive to-destructive/70 shadow-sm"
+                              style={{
+                                bottom: `${(item.totalDeductions / maxValue) * 100}%`,
+                                width: "100%",
+                                transformOrigin: "left bottom",
+                                transform: `rotate(${
+                                  Math.atan2(
+                                    (data[index + 1].totalDeductions /
+                                      maxValue) *
+                                      100 -
+                                      (item.totalDeductions / maxValue) * 100,
+                                    100,
+                                  ) *
+                                  (180 / Math.PI)
+                                }deg)`,
+                              }}
+                            ></div>
+
+                            <div
+                              className="absolute bottom-0 left-1/4 h-0.5 bg-gradient-to-r from-amber-500 to-amber-500/70 shadow-sm"
+                              style={{
+                                bottom: `${(item.totalAdvances / maxValue) * 100}%`,
+                                width: "100%",
+                                transformOrigin: "left bottom",
+                                transform: `rotate(${
+                                  Math.atan2(
+                                    (data[index + 1].totalAdvances / maxValue) *
+                                      100 -
+                                      (item.totalAdvances / maxValue) * 100,
+                                    100,
+                                  ) *
+                                  (180 / Math.PI)
+                                }deg)`,
+                              }}
+                            ></div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {chartType === "area" && (
+                      <div className="w-full h-full relative">
+                        <div
+                          className="w-full bg-gradient-to-t from-primary/30 to-primary/5 rounded-t absolute bottom-0 transition-all duration-300 hover:from-primary/40 hover:to-primary/10"
                           style={{
                             height: `${(item.totalSalaries / maxValue) * 100}%`,
                           }}
                         ></div>
                         <div
-                          className="w-5 bg-destructive rounded-t"
+                          className="w-full bg-gradient-to-t from-destructive/30 to-destructive/5 rounded-t absolute bottom-0 transition-all duration-300 hover:from-destructive/40 hover:to-destructive/10"
                           style={{
                             height: `${(item.totalDeductions / maxValue) * 100}%`,
+                            opacity: 0.7,
                           }}
                         ></div>
                         <div
-                          className="w-5 bg-amber-500 rounded-t"
+                          className="w-full bg-gradient-to-t from-amber-500/30 to-amber-500/5 rounded-t absolute bottom-0 transition-all duration-300 hover:from-amber-500/40 hover:to-amber-500/10"
                           style={{
                             height: `${(item.totalAdvances / maxValue) * 100}%`,
+                            opacity: 0.5,
                           }}
                         ></div>
-                      </>
-                    )}
-                    {chartType === "line" && index > 0 && (
-                      <div className="w-full h-full relative">
+
+                        {/* Data point */}
                         <div
-                          className="absolute bottom-0 left-1/2 w-2 h-2 bg-primary rounded-full"
+                          className="absolute left-1/2 w-3 h-3 bg-primary rounded-full shadow-md transform -translate-x-1/2 z-10 transition-all duration-300 hover:w-4 hover:h-4"
                           style={{
                             bottom: `${(item.totalSalaries / maxValue) * 100}%`,
                           }}
-                        ></div>
-                        {index < data.length - 1 && (
-                          <div
-                            className="absolute bottom-0 left-1/2 w-full h-0.5 bg-primary"
-                            style={{
-                              bottom: `${(item.totalSalaries / maxValue) * 100}%`,
-                              transform: "rotate(30deg)",
-                              transformOrigin: "left bottom",
-                            }}
-                          ></div>
-                        )}
+                        >
+                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-background/90 px-2 py-1 rounded shadow-md text-xs opacity-0 hover:opacity-100 transition-opacity whitespace-nowrap">
+                            {item.totalSalaries.toLocaleString()} ج.م
+                          </div>
+                        </div>
                       </div>
-                    )}
-                    {chartType === "area" && (
-                      <div
-                        className="w-full bg-primary/20 rounded-t"
-                        style={{
-                          height: `${(item.totalSalaries / maxValue) * 100}%`,
-                        }}
-                      ></div>
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground">

@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
   testSupabaseConnection,
   testEmployeeInsert,
@@ -16,6 +17,11 @@ export default function TestConnectionPage() {
       ? "[Hidden]"
       : "Not set",
   });
+
+  // Auto-test connection on page load
+  useEffect(() => {
+    handleTestConnection();
+  }, []);
 
   const handleTestConnection = async () => {
     setLoading(true);
@@ -70,14 +76,28 @@ export default function TestConnectionPage() {
 
         <div className="flex gap-4 mb-6">
           <Button onClick={handleTestConnection} disabled={loading}>
-            اختبار الاتصال
+            {loading ? (
+              <>
+                <LoadingSpinner size="sm" className="ml-2" />
+                جاري الاختبار...
+              </>
+            ) : (
+              "اختبار الاتصال"
+            )}
           </Button>
           <Button
             onClick={handleTestInsert}
             disabled={loading}
             variant="outline"
           >
-            اختبار إضافة موظف
+            {loading ? (
+              <>
+                <LoadingSpinner size="sm" className="ml-2" />
+                جاري الاختبار...
+              </>
+            ) : (
+              "اختبار إضافة موظف"
+            )}
           </Button>
         </div>
 

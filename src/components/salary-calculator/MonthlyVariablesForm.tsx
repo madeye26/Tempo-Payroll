@@ -36,12 +36,20 @@ type MonthlyVariablesFormProps = {
   onSubmit?: (values: z.infer<typeof formSchema>) => void;
   initialValues?: Partial<z.infer<typeof formSchema>>;
   onValuesChange?: (values: z.infer<typeof formSchema>) => void;
+  onMonthChange?: (month: string) => void;
+  onYearChange?: (year: string) => void;
+  selectedMonth?: string;
+  selectedYear?: string;
 };
 
 export default function MonthlyVariablesForm({
   onSubmit = (values) => console.log(values),
   initialValues,
   onValuesChange,
+  onMonthChange,
+  onYearChange,
+  selectedMonth,
+  selectedYear,
 }: MonthlyVariablesFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,9 +70,31 @@ export default function MonthlyVariablesForm({
   useEffect(() => {
     const subscription = form.watch((value) => {
       onValuesChange?.(value as z.infer<typeof formSchema>);
+
+      // Update month and year if they change
+      if (
+        value.month &&
+        format(value.month, "MMMM", { locale: ar }) !== selectedMonth
+      ) {
+        onMonthChange?.(format(value.month, "MMMM", { locale: ar }));
+      }
+
+      if (
+        value.month &&
+        value.month.getFullYear().toString() !== selectedYear
+      ) {
+        onYearChange?.(value.month.getFullYear().toString());
+      }
     });
     return () => subscription.unsubscribe();
-  }, [form, onValuesChange]);
+  }, [
+    form,
+    onValuesChange,
+    onMonthChange,
+    onYearChange,
+    selectedMonth,
+    selectedYear,
+  ]);
 
   return (
     <Card className="w-full p-6 bg-card/80 backdrop-blur-sm">

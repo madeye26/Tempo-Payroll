@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FileDown, FileText, FileSpreadsheet, FileType } from "lucide-react";
+import { LoadingSpinner } from "./loading-spinner";
 
 interface DataExportProps {
   data: any[];
@@ -19,18 +20,29 @@ export function DataExport({
   filename = "export",
   onExport,
 }: DataExportProps) {
-  const handleExport = (format: "pdf" | "excel" | "csv") => {
-    if (onExport) {
-      onExport(format);
-      return;
-    }
+  const [loading, setLoading] = useState(false);
 
-    if (format === "csv") {
-      exportToCsv(data, filename);
-    } else if (format === "excel") {
-      exportToExcel(data, filename);
-    } else if (format === "pdf") {
-      exportToPdf(data, filename);
+  const handleExport = (format: "pdf" | "excel" | "csv") => {
+    setLoading(true);
+    try {
+      if (onExport) {
+        onExport(format);
+        setLoading(false);
+        return;
+      }
+
+      if (format === "csv") {
+        exportToCsv(data, filename);
+      } else if (format === "excel") {
+        exportToExcel(data, filename);
+      } else if (format === "pdf") {
+        exportToPdf(data, filename);
+      }
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      alert("حدث خطأ أثناء تصدير البيانات");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -84,8 +96,12 @@ export function DataExport({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline">
-          <FileDown className="ml-2 h-4 w-4" />
+        <Button variant="outline" disabled={loading}>
+          {loading ? (
+            <LoadingSpinner size="sm" className="ml-2" />
+          ) : (
+            <FileDown className="ml-2 h-4 w-4" />
+          )}
           تصدير البيانات
         </Button>
       </DropdownMenuTrigger>

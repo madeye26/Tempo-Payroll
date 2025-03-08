@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { DataTable } from "@/components/salary-calculator/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { useEmployees } from "@/lib/hooks/use-employees";
-import { CalendarIcon, FileDown } from "lucide-react";
+import { CalendarIcon, FileDown, Printer } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -19,6 +19,7 @@ import { ar } from "date-fns/locale";
 import { DataExport } from "@/components/ui/data-export";
 import { AdvancedAnalytics } from "@/components/salary-calculator/advanced-analytics";
 import { ReportTemplateBuilder } from "@/components/salary-calculator/report-template-builder";
+import { PrintReport } from "@/components/salary-calculator/print-report";
 
 interface SalaryReport {
   id: string;
@@ -34,6 +35,8 @@ interface SalaryReport {
   purchases: number;
   totalDeductions: number;
   netSalary: number;
+  absences: number;
+  penaltyDays: number;
   month: string;
   year: number;
 }
@@ -45,44 +48,103 @@ export default function ReportsPage() {
   const [reportType, setReportType] = useState("monthly");
   const [templateBuilderOpen, setTemplateBuilderOpen] = useState(false);
   const [savedTemplates, setSavedTemplates] = useState<any[]>([]);
+  const [printReportOpen, setPrintReportOpen] = useState(false);
 
-  // Mock data for reports
-  const [salaryReports, setSalaryReports] = useState<SalaryReport[]>([
-    {
-      id: "1",
-      employeeId: "1",
-      employeeName: "أحمد محمد",
-      baseSalary: 5000,
-      incentives: 500,
-      bonuses: 200,
-      overtime: 300,
-      totalAdditions: 1000,
-      deductions: 200,
-      advances: 500,
-      purchases: 300,
-      totalDeductions: 1000,
-      netSalary: 5000,
-      month: "5",
-      year: 2024,
-    },
-    {
-      id: "2",
-      employeeId: "2",
-      employeeName: "فاطمة علي",
-      baseSalary: 4500,
-      incentives: 400,
-      bonuses: 150,
-      overtime: 250,
-      totalAdditions: 800,
-      deductions: 150,
-      advances: 400,
-      purchases: 250,
-      totalDeductions: 800,
-      netSalary: 4500,
-      month: "5",
-      year: 2024,
-    },
-  ]);
+  // Load salary reports from localStorage or use mock data
+  const [salaryReports, setSalaryReports] = useState<SalaryReport[]>([]);
+
+  useEffect(() => {
+    // Try to load saved salaries from localStorage
+    const savedSalaries = localStorage.getItem("salaries");
+    if (savedSalaries) {
+      try {
+        const parsedSalaries = JSON.parse(savedSalaries);
+        const formattedReports = parsedSalaries.map(
+          (salary: any, index: number) => ({
+            id: salary.date
+              ? new Date(salary.date).getTime().toString()
+              : index.toString(),
+            employeeId: salary.employeeId,
+            employeeName: salary.employeeName,
+            baseSalary: salary.baseSalary,
+            incentives: salary.monthlyIncentives,
+            bonuses: salary.bonus,
+            overtime: salary.overtimeValue,
+            totalAdditions:
+              salary.baseSalary +
+              salary.monthlyIncentives +
+              salary.bonus +
+              salary.overtimeValue,
+            deductions: salary.hourlyDeductions,
+            advances: salary.advances,
+            purchases: salary.purchases,
+            absences: parseInt(salary.absences) || 0,
+            penaltyDays: parseInt(salary.penaltyDays) || 0,
+            totalDeductions:
+              salary.advances +
+              salary.purchases +
+              salary.hourlyDeductions +
+              salary.penalties,
+            netSalary: salary.netSalary,
+            month: salary.month,
+            year: parseInt(salary.year),
+          }),
+        );
+        setSalaryReports(formattedReports);
+      } catch (error) {
+        console.error("Error parsing saved salaries:", error);
+        // Fall back to mock data if parsing fails
+        setDefaultMockData();
+      }
+    } else {
+      // If no saved data, use mock data
+      setDefaultMockData();
+    }
+  }, []);
+
+  // Function to set default mock data
+  const setDefaultMockData = () => {
+    setSalaryReports([
+      {
+        id: "1",
+        employeeId: "1",
+        employeeName: "أحمد محمد",
+        baseSalary: 5000,
+        incentives: 500,
+        bonuses: 200,
+        overtime: 300,
+        totalAdditions: 1000,
+        deductions: 200,
+        advances: 500,
+        purchases: 300,
+        totalDeductions: 1000,
+        netSalary: 5000,
+        absences: 2,
+        penaltyDays: 1,
+        month: "5",
+        year: 2024,
+      },
+      {
+        id: "2",
+        employeeId: "2",
+        employeeName: "فاطمة علي",
+        baseSalary: 4500,
+        incentives: 400,
+        bonuses: 150,
+        overtime: 250,
+        totalAdditions: 800,
+        deductions: 150,
+        advances: 400,
+        purchases: 250,
+        totalDeductions: 800,
+        netSalary: 4500,
+        absences: 1,
+        penaltyDays: 0,
+        month: "5",
+        year: 2024,
+      },
+    ]);
+  };
 
   const months = [
     { value: "1", label: "يناير" },
@@ -99,7 +161,17 @@ export default function ReportsPage() {
     { value: "12", label: "ديسمبر" },
   ];
 
-  const years = ["2022", "2023", "2024", "2025"];
+  const years = [
+    "2022",
+    "2023",
+    "2024",
+    "2025",
+    "2026",
+    "2027",
+    "2028",
+    "2029",
+    "2030",
+  ];
 
   const filteredReports = salaryReports.filter((report) => {
     if (reportType === "monthly") {
@@ -108,6 +180,7 @@ export default function ReportsPage() {
         report.year.toString() === selectedYear
       );
     } else {
+      // For yearly reports, only show unique employees for the selected year
       return report.year.toString() === selectedYear;
     }
   });
@@ -140,9 +213,49 @@ export default function ReportsPage() {
       cell: ({ row }) => `${row.getValue("baseSalary")} ج.م`,
     },
     {
+      accessorKey: "incentives",
+      header: "الحوافز",
+      cell: ({ row }) => `${row.getValue("incentives")} ج.م`,
+    },
+    {
+      accessorKey: "bonuses",
+      header: "المكافآت",
+      cell: ({ row }) => `${row.getValue("bonuses")} ج.م`,
+    },
+    {
+      accessorKey: "overtime",
+      header: "الأوفرتايم",
+      cell: ({ row }) => `${row.getValue("overtime")} ج.م`,
+    },
+    {
       accessorKey: "totalAdditions",
       header: "إجمالي الإضافات",
       cell: ({ row }) => `${row.getValue("totalAdditions")} ج.م`,
+    },
+    {
+      accessorKey: "absences",
+      header: "الغيابات (أيام)",
+      cell: ({ row }) => row.getValue("absences"),
+    },
+    {
+      accessorKey: "penaltyDays",
+      header: "أيام الجزاءات",
+      cell: ({ row }) => row.getValue("penaltyDays"),
+    },
+    {
+      accessorKey: "deductions",
+      header: "الخصومات",
+      cell: ({ row }) => `${row.getValue("deductions")} ج.م`,
+    },
+    {
+      accessorKey: "advances",
+      header: "السلف",
+      cell: ({ row }) => `${row.getValue("advances")} ج.م`,
+    },
+    {
+      accessorKey: "purchases",
+      header: "المشتريات",
+      cell: ({ row }) => `${row.getValue("purchases")} ج.م`,
     },
     {
       accessorKey: "totalDeductions",
@@ -157,12 +270,62 @@ export default function ReportsPage() {
   ];
 
   const handleGenerateReport = () => {
-    // In a real app, this would fetch data from the backend
-    console.log(
-      "Generating report for",
-      reportType,
-      selectedMonth,
-      selectedYear,
+    // Get all saved salaries from localStorage
+    const savedSalaries = JSON.parse(localStorage.getItem("salaries") || "[]");
+
+    // Format the salaries for the report
+    const formattedReports = savedSalaries.map((salary: any, index: number) => {
+      // Convert month names to month numbers for comparison
+      let monthNumber = "";
+      for (let i = 0; i < months.length; i++) {
+        if (
+          months[i].value === salary.month ||
+          months[i].label === salary.month
+        ) {
+          monthNumber = months[i].value;
+          break;
+        }
+      }
+
+      return {
+        id: salary.date
+          ? new Date(salary.date).getTime().toString()
+          : index.toString(),
+        employeeId: salary.employeeId,
+        employeeName: salary.employeeName,
+        baseSalary: salary.baseSalary,
+        incentives: salary.monthlyIncentives,
+        bonuses: salary.bonus,
+        overtime: salary.overtimeValue,
+        totalAdditions:
+          salary.baseSalary +
+          salary.monthlyIncentives +
+          salary.bonus +
+          salary.overtimeValue,
+        deductions: salary.hourlyDeductions,
+        advances: salary.advances,
+        purchases: salary.purchases,
+        totalDeductions:
+          salary.advances +
+          salary.purchases +
+          salary.hourlyDeductions +
+          salary.penalties,
+        netSalary: salary.netSalary,
+        month: monthNumber || salary.month,
+        year: parseInt(salary.year),
+      };
+    });
+
+    // Update the reports state
+    setSalaryReports(formattedReports);
+
+    console.log("Generated reports:", formattedReports);
+    console.log("Selected month:", selectedMonth);
+    console.log("Selected year:", selectedYear);
+
+    // Show a confirmation message
+    alert(
+      `تم إنشاء التقرير بنجاح لـ ${reportType === "monthly" ? months.find((m) => m.value === selectedMonth)?.label : "سنة"} ${selectedYear}`,
     );
   };
 
@@ -182,6 +345,14 @@ export default function ReportsPage() {
             onClick={() => setTemplateBuilderOpen(true)}
           >
             إنشاء قالب تقرير
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setPrintReportOpen(true)}
+            disabled={filteredReports.length === 0}
+          >
+            <Printer className="ml-2 h-4 w-4" />
+            طباعة التقرير
           </Button>
           <DataExport
             data={filteredReports}
@@ -266,11 +437,17 @@ export default function ReportsPage() {
             </div>
 
             <h3 className="text-lg font-semibold mb-4">تفاصيل الرواتب</h3>
-            <DataTable
-              columns={columns}
-              data={filteredReports}
-              searchKey="employeeName"
-            />
+            {filteredReports.length > 0 ? (
+              <DataTable
+                columns={columns}
+                data={filteredReports}
+                searchKey="employeeName"
+              />
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                لا توجد بيانات للعرض. الرجاء إنشاء التقرير أولاً.
+              </div>
+            )}
           </Card>
         </TabsContent>
 
@@ -306,19 +483,19 @@ export default function ReportsPage() {
             <h2 className="text-xl font-semibold mb-6">ملخص التقرير السنوي</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <Card className="p-4 space-y-2">
-                <p className="text-muted-foreground">إجمالي الرواتب</p>
+                <p className="text-muted-foreground">إجمالي الرواتب السنوية</p>
                 <p className="text-2xl font-bold">{totalSalaries * 12} ج.م</p>
               </Card>
               <Card className="p-4 space-y-2">
-                <p className="text-muted-foreground">إجمالي الحوافز</p>
-                <p className="text-2xl font-bold">{totalIncentives * 12} ج.م</p>
+                <p className="text-muted-foreground">متوسط الرواتب الشهرية</p>
+                <p className="text-2xl font-bold">{totalSalaries} ج.م</p>
               </Card>
               <Card className="p-4 space-y-2">
-                <p className="text-muted-foreground">إجمالي السلف</p>
-                <p className="text-2xl font-bold">{totalAdvances * 12} ج.م</p>
+                <p className="text-muted-foreground">عدد الموظفين</p>
+                <p className="text-2xl font-bold">{filteredReports.length}</p>
               </Card>
               <Card className="p-4 space-y-2">
-                <p className="text-muted-foreground">إجمالي الخصومات</p>
+                <p className="text-muted-foreground">إجمالي الخصومات السنوية</p>
                 <p className="text-2xl font-bold">{totalDeductions * 12} ج.م</p>
               </Card>
             </div>
@@ -326,11 +503,17 @@ export default function ReportsPage() {
             <h3 className="text-lg font-semibold mb-4">
               تفاصيل الرواتب السنوية
             </h3>
-            <DataTable
-              columns={columns}
-              data={filteredReports}
-              searchKey="employeeName"
-            />
+            {filteredReports.length > 0 ? (
+              <DataTable
+                columns={columns}
+                data={filteredReports}
+                searchKey="employeeName"
+              />
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                لا توجد بيانات للعرض. الرجاء إنشاء التقرير أولاً.
+              </div>
+            )}
 
             <div className="mt-6">
               <h3 className="text-lg font-semibold mb-4">
@@ -407,6 +590,14 @@ export default function ReportsPage() {
         open={templateBuilderOpen}
         onOpenChange={setTemplateBuilderOpen}
         onSave={handleSaveTemplate}
+      />
+
+      <PrintReport
+        open={printReportOpen}
+        onOpenChange={setPrintReportOpen}
+        reports={filteredReports}
+        month={months.find((m) => m.value === selectedMonth)?.label || ""}
+        year={selectedYear}
       />
     </div>
   );

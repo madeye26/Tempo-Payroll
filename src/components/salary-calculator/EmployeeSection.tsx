@@ -15,11 +15,13 @@ import { Search, UserPlus, Edit2 } from "lucide-react";
 interface Employee {
   id: string;
   name: string;
-  position: string;
-  department: string;
-  basicSalary: number;
+  position?: string;
+  department?: string;
+  base_salary: number;
+  monthly_incentives?: number;
+  join_date?: string;
   email?: string;
-  joinDate?: string;
+  status?: string;
 }
 
 import { useState } from "react";
@@ -98,7 +100,7 @@ const EmployeeSection = ({
 
         {/* Employee Details Grid */}
         {selectedEmployee && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="space-y-2">
               <Label className="text-right block">اسم الموظف</Label>
               <Input
@@ -110,7 +112,7 @@ const EmployeeSection = ({
             <div className="space-y-2">
               <Label className="text-right block">المنصب</Label>
               <Input
-                value={selectedEmployee.position}
+                value={selectedEmployee.position || ""}
                 readOnly
                 className="text-right"
               />
@@ -118,7 +120,7 @@ const EmployeeSection = ({
             <div className="space-y-2">
               <Label className="text-right block">القسم</Label>
               <Input
-                value={selectedEmployee.department}
+                value={selectedEmployee.department || ""}
                 readOnly
                 className="text-right"
               />
@@ -126,31 +128,27 @@ const EmployeeSection = ({
             <div className="space-y-2">
               <Label className="text-right block">الراتب الأساسي</Label>
               <Input
-                value={`${selectedEmployee.basicSalary} ج.م`}
+                value={`${selectedEmployee.base_salary} ج.م`}
                 readOnly
                 className="text-right"
               />
             </div>
-            {selectedEmployee.monthly_incentives !== undefined && (
-              <div className="space-y-2">
-                <Label className="text-right block">الحوافز الشهرية</Label>
-                <Input
-                  value={`${selectedEmployee.monthly_incentives} ج.م`}
-                  readOnly
-                  className="text-right"
-                />
-              </div>
-            )}
-            {selectedEmployee.joinDate && (
-              <div className="space-y-2">
-                <Label className="text-right block">تاريخ الانضمام</Label>
-                <Input
-                  value={selectedEmployee.joinDate}
-                  readOnly
-                  className="text-right"
-                />
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label className="text-right block">الحوافز الشهرية</Label>
+              <Input
+                value={`${selectedEmployee.monthly_incentives || 0} ج.م`}
+                readOnly
+                className="text-right"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-right block">تاريخ الانضمام</Label>
+              <Input
+                value={selectedEmployee.join_date || ""}
+                readOnly
+                className="text-right"
+              />
+            </div>
           </div>
         )}
 

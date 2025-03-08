@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -65,8 +65,13 @@ const SidebarItem = ({ icon, label, href, active }: SidebarItemProps) => {
 };
 
 export function Sidebar() {
+  const [activeTab, setActiveTab] = useState<string>("/");
   const location = useLocation();
   const pathname = location.pathname;
+
+  useEffect(() => {
+    setActiveTab(pathname);
+  }, [pathname]);
 
   const routes = [
     {
@@ -129,7 +134,8 @@ export function Sidebar() {
               label={route.label}
               href={route.href}
               active={
-                pathname === route.href || pathname.startsWith(route.href + "/")
+                activeTab === route.href ||
+                activeTab.startsWith(route.href + "/")
               }
             />
           ))}

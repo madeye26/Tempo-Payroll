@@ -2,6 +2,7 @@ import React from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface SalarySummaryProps {
   totalSalary?: number;
@@ -52,7 +53,14 @@ const SalarySummary = ({
             className="min-w-[120px] bg-primary"
             disabled={loading}
           >
-            حفظ
+            {loading ? (
+              <>
+                <LoadingSpinner size="sm" className="ml-2" />
+                جاري الحفظ...
+              </>
+            ) : (
+              "حفظ"
+            )}
           </Button>
         </div>
       </div>

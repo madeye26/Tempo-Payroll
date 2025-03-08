@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "../supabase";
 import { Database } from "@/types/schema";
 
 type SalaryComponent = Database["public"]["Tables"]["salary_components"]["Row"];
@@ -38,44 +38,124 @@ export function useSalaryCalculation(employee?: Employee) {
     };
   };
 
-  const saveSalaryCalculation = async (variables: MonthlyVariables) => {
+  const saveSalaryCalculation = async (
+    variables: MonthlyVariables,
+    month: string,
+    year: string,
+  ) => {
     if (!employee) return;
 
-    const { totalSalary, totalDeductions, netSalary } =
-      calculateTotals(variables);
-    const date = new Date();
-
+    setLoading(true);
     try {
-      setLoading(true);
+      const { totalSalary, totalDeductions, netSalary } =
+        calculateTotals(variables);
+
+      const salaryData = {
+        id: Date.now().toString(),
+        employeeId: employee.id,
+        employeeName: employee.name,
+        month,
+        year,
+        baseSalary: employee.base_salary,
+        monthlyIncentives: parseFloat(variables.incentives) || 0,
+        bonus: parseFloat(variables.bonuses) || 0,
+        overtimeHours: 0,
+        overtimeValue: 0,
+        purchases: parseFloat(variables.purchases) || 0,
+        advances: parseFloat(variables.advances) || 0,
+        absences: parseFloat(variables.absences) || 0,
+        hourlyDeductions: 0,
+        penaltyDays: 0,
+        penalties: parseFloat(variables.penalties) || 0,
+        totalSalary,
+        totalDeductions,
+        netSalary,
+        date: new Date().toISOString(),
+      };
+
       if (supabase) {
         const { error } = await supabase.from("salary_components").insert([
           {
             employee_id: employee.id,
-            month: date.toLocaleString("default", { month: "long" }),
-            year: date.getFullYear(),
-            bonus: Number(variables.bonuses),
-            allowances: Number(variables.incentives),
+            month: month,
+            year: parseInt(year),
+            bonus: parseFloat(variables.bonuses),
+            allowances: parseFloat(variables.incentives),
             deductions:
-              Number(variables.penalties) + Number(variables.absences),
-            purchases: Number(variables.purchases),
-            loans: Number(variables.advances),
+              parseFloat(variables.penalties) + parseFloat(variables.absences),
+            purchases: parseFloat(variables.purchases),
+            loans: parseFloat(variables.advances),
             net_salary: netSalary,
           },
         ]);
 
         if (error) throw error;
       } else {
-        console.log("Mock save salary calculation:", {
-          employee_id: employee.id,
-          variables,
-          totals: { totalSalary, totalDeductions, netSalary },
-        });
+        // Save to localStorage for persistence
+        const savedSalaries = JSON.parse(
+          localStorage.getItem("salaries") || "[]",
+        );
+        savedSalaries.push(salaryData);
+        localStorage.setItem("salaries", JSON.stringify(savedSalaries));
+
+        // Update advances if needed
+        if (parseFloat(variables.advances) > 0) {
+          await updateAdvances(employee.id, parseFloat(variables.advances));
+        }
       }
+
+      return salaryData;
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
       throw e;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateAdvances = async (employeeId: string, advanceAmount: number) => {
+    try {
+      // Get advances from localStorage
+      const savedAdvances = JSON.parse(
+        localStorage.getItem("advances") || "[]",
+      );
+      let remainingAdvanceAmount = advanceAmount;
+
+      // Update each advance until the deducted amount is covered
+      const updatedAdvances = savedAdvances.map((advance: any) => {
+        if (
+          advance.employeeId === employeeId &&
+          advance.status === "pending" &&
+          remainingAdvanceAmount > 0
+        ) {
+          const advanceValue = advance.remainingAmount || advance.amount;
+
+          if (remainingAdvanceAmount >= advanceValue) {
+            // Fully pay off this advance
+            remainingAdvanceAmount -= advanceValue;
+            return {
+              ...advance,
+              status: "paid",
+              remainingAmount: 0,
+              actualRepaymentDate: new Date().toISOString().split("T")[0],
+            };
+          } else {
+            // Partially pay off this advance
+            const newRemainingAmount = advanceValue - remainingAdvanceAmount;
+            remainingAdvanceAmount = 0;
+            return {
+              ...advance,
+              remainingAmount: newRemainingAmount,
+            };
+          }
+        }
+        return advance;
+      });
+
+      // Save updated advances
+      localStorage.setItem("advances", JSON.stringify(updatedAdvances));
+    } catch (error) {
+      console.error("Error updating advances:", error);
     }
   };
 
