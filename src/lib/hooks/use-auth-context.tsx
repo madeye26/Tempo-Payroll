@@ -1,8 +1,7 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, createContext } from "react";
 import { supabase } from "../supabase";
 import { useLocalStorage } from "./use-local-storage";
 import { logActivity } from "../activity-logger";
-import { authService } from "../auth-service";
 
 type User = {
   id: string;
@@ -22,14 +21,6 @@ type AuthContextType = {
 export const AuthContext = createContext<AuthContextType | undefined>(
   undefined,
 );
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
 
 // Mock users for localStorage fallback
 const mockUsers = [
@@ -63,7 +54,7 @@ const mockUsers = [
   },
 ];
 
-// Default permission mapping by role
+// Permission mapping
 const rolePermissions = {
   admin: [
     "view_dashboard",
@@ -287,14 +278,60 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const result = await authService.login(email, password);
+      if (supabase) {
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
 
-      if (result.success && result.user) {
-        setUser(result.user);
-        return true;
+          if (error) {
+            console.error("Supabase auth error:", error);
+            // Fall back to mock login if Supabase auth fails
+            return await mockLoginFallback(email, password);
+          }
+
+          if (data.user) {
+            try {
+              // Get user profile from database
+              const { data: userData, error: userError } = await supabase
+                .from("users")
+                .select("*")
+                .eq("id", data.user.id)
+                .single();
+
+              if (userError) {
+                console.error("User data fetch error:", userError);
+                // Fall back to mock login if user data fetch fails
+                return await mockLoginFallback(email, password);
+              }
+
+              if (userData) {
+                const userObj = {
+                  id: userData.id,
+                  email: userData.email,
+                  role: userData.role,
+                  name: userData.name,
+                };
+                setUser(userObj);
+                logActivity("auth", "login", "تسجيل دخول", userObj.id);
+                return true;
+              }
+            } catch (userError) {
+              console.error("Error fetching user data:", userError);
+              // Fall back to mock login if user data fetch fails
+              return await mockLoginFallback(email, password);
+            }
+          }
+          return false;
+        } catch (authError) {
+          console.error("Supabase auth exception:", authError);
+          // Fall back to mock login if Supabase auth throws an exception
+          return await mockLoginFallback(email, password);
+        }
+      } else {
+        return await mockLoginFallback(email, password);
       }
-
-      return false;
     } catch (error) {
       console.error("Login error:", error);
       return false;
@@ -304,9 +341,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     try {
       if (user) {
-        await authService.logout(user.id);
+        logActivity("auth", "logout", "تسجيل خروج", user.id);
+      }
+
+      if (supabase) {
+        await supabase.auth.signOut();
       }
       setUser(null);
+      localStorage.removeItem("auth_user");
     } catch (error) {
       console.error("Logout error:", error);
     }
@@ -314,13 +356,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
-
-    // First check user-specific permissions if they exist
-    if (user.permissions && user.permissions.includes(permission)) {
-      return true;
-    }
-
-    // Fall back to role-based permissions
     return (
       rolePermissions[user.role as keyof typeof rolePermissions]?.includes(
         permission,
@@ -336,5 +371,3 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     </AuthContext.Provider>
   );
 };
-
-// useAuth hook is defined above

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { Save, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   Select,
   SelectContent,
@@ -90,21 +91,22 @@ export default function SystemSettingsPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold bg-gradient-to-l from-primary to-primary/70 bg-clip-text text-transparent inline-block">
-          إعدادات النظام
-        </h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleReset}>
-            <RefreshCw className="ml-2 h-4 w-4" />
-            إعادة تعيين
-          </Button>
-          <Button onClick={handleSave}>
-            <Save className="ml-2 h-4 w-4" />
-            حفظ
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="إعدادات النظام"
+        description="تعديل الإعدادات العامة للنظام"
+        actions={
+          <>
+            <Button variant="outline" onClick={handleReset}>
+              <RefreshCw className="ml-2 h-4 w-4" />
+              إعادة تعيين
+            </Button>
+            <Button onClick={handleSave}>
+              <Save className="ml-2 h-4 w-4" />
+              حفظ
+            </Button>
+          </>
+        }
+      />
 
       <Card className="p-6">
         <h2 className="text-xl font-semibold mb-4">إعدادات الشركة</h2>

@@ -65,28 +65,8 @@ export const logActivity = async (
     };
     existingLogs.unshift(newLog); // Add to beginning of array
     localStorage.setItem("activity_logs", JSON.stringify(existingLogs));
-
-    // Then try to log to Supabase if available
-    if (supabase) {
-      try {
-        const { error } = await supabase.from("activity_logs").insert([
-          {
-            id: newLog.id,
-            ...activityData,
-          },
-        ]);
-
-        if (error) {
-          console.error("Error logging activity to Supabase:", error);
-          // Already saved to localStorage above
-        } else {
-          console.log("Activity logged to Supabase successfully");
-        }
-      } catch (supabaseError) {
-        console.error("Supabase operation failed:", supabaseError);
-        // Already saved to localStorage above
-      }
-    }
+    console.log("Activity logged to localStorage:", newLog);
+    console.log("Current activity logs:", existingLogs);
 
     // Force update any components that might be listening for activity logs
     const event = new CustomEvent("activity-logged", { detail: activityData });

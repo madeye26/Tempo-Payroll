@@ -20,15 +20,23 @@ console.log("Supabase configuration:", {
   hasKey: supabaseAnonKey ? "Yes" : "No",
 });
 
-export const supabase =
-  supabaseUrl && supabaseAnonKey
-    ? createClient<Database>(supabaseUrl, supabaseAnonKey, {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-        },
-      })
-    : null;
+// Create Supabase client with error handling
+let supabaseClient = null;
+try {
+  if (supabaseUrl && supabaseAnonKey) {
+    supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    });
+    console.log("Supabase client initialized successfully");
+  }
+} catch (error) {
+  console.error("Error initializing Supabase client:", error);
+}
+
+export const supabase = supabaseClient;
 
 // Mock data for development
 export const mockEmployees = [

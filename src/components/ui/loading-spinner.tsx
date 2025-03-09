@@ -1,4 +1,5 @@
 import React from "react";
+import { cn } from "@/lib/utils";
 
 interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg";
@@ -17,10 +18,16 @@ export function LoadingSpinner({
 
   return (
     <div
-      className={`inline-block animate-spin rounded-full border-2 border-solid border-current border-e-transparent ${sizeClasses[size]} ${className}`}
+      className={cn(
+        "inline-block animate-spin rounded-full border-2 border-solid border-current border-e-transparent align-[-0.125em] text-primary motion-reduce:animate-[spin_1.5s_linear_infinite]",
+        sizeClasses[size],
+        className,
+      )}
       role="status"
     >
-      <span className="sr-only">جاري التحميل...</span>
+      <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">
+        جاري التحميل...
+      </span>
     </div>
   );
 }

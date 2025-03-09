@@ -260,6 +260,177 @@ export interface Database {
           evaluator?: string | null;
         };
       };
+      users: {
+        Row: {
+          id: string;
+          email: string;
+          name: string;
+          role: "admin" | "manager" | "accountant" | "viewer";
+          password_hash: string | null;
+          last_login: string | null;
+          login_count: number | null;
+          is_active: boolean | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          name: string;
+          role: "admin" | "manager" | "accountant" | "viewer";
+          password_hash?: string | null;
+          last_login?: string | null;
+          login_count?: number | null;
+          is_active?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          email?: string;
+          name?: string;
+          role?: "admin" | "manager" | "accountant" | "viewer";
+          password_hash?: string | null;
+          last_login?: string | null;
+          login_count?: number | null;
+          is_active?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
+      user_permissions: {
+        Row: {
+          id: string;
+          user_id: string;
+          permission_name: string;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          permission_name: string;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          permission_name?: string;
+          created_at?: string | null;
+        };
+      };
+      user_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          session_token: string;
+          ip_address: string | null;
+          user_agent: string | null;
+          expires_at: string;
+          created_at: string | null;
+          last_active_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          session_token: string;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          expires_at: string;
+          created_at?: string | null;
+          last_active_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          session_token?: string;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          expires_at?: string;
+          created_at?: string | null;
+          last_active_at?: string | null;
+        };
+      };
+      password_reset_tokens: {
+        Row: {
+          id: string;
+          user_id: string;
+          token: string;
+          expires_at: string;
+          created_at: string | null;
+          used_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          token: string;
+          expires_at: string;
+          created_at?: string | null;
+          used_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          token?: string;
+          expires_at?: string;
+          created_at?: string | null;
+          used_at?: string | null;
+        };
+      };
+      user_activity_logs: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          action: string;
+          details: Json | null;
+          ip_address: string | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          action: string;
+          details?: Json | null;
+          ip_address?: string | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          action?: string;
+          details?: Json | null;
+          ip_address?: string | null;
+          created_at?: string | null;
+        };
+      };
+      activity_logs: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          type: string;
+          action: string;
+          description: string;
+          details: Json | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          type: string;
+          action: string;
+          description: string;
+          details?: Json | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          type?: string;
+          action?: string;
+          description?: string;
+          details?: Json | null;
+          created_at?: string | null;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

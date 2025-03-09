@@ -1,124 +1,84 @@
 import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { FileDown, FileText, FileSpreadsheet, FileType } from "lucide-react";
+import { Button } from "./button";
 import { LoadingSpinner } from "./loading-spinner";
+import { FileDown } from "lucide-react";
+import { useToast } from "./use-toast";
 
 interface DataExportProps {
   data: any[];
   filename?: string;
-  onExport?: (format: "pdf" | "excel" | "csv") => void;
+  disabled?: boolean;
 }
 
 export function DataExport({
   data,
   filename = "export",
-  onExport,
+  disabled = false,
 }: DataExportProps) {
-  const [loading, setLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
 
-  const handleExport = (format: "pdf" | "excel" | "csv") => {
-    setLoading(true);
+  const handleExport = () => {
+    if (!data || data.length === 0) {
+      toast({
+        title: "خطأ",
+        description: "لا توجد بيانات للتصدير",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsExporting(true);
     try {
-      if (onExport) {
-        onExport(format);
-        setLoading(false);
-        return;
-      }
+      // Convert to JSON string
+      const jsonString = JSON.stringify(data, null, 2);
 
-      if (format === "csv") {
-        exportToCsv(data, filename);
-      } else if (format === "excel") {
-        exportToExcel(data, filename);
-      } else if (format === "pdf") {
-        exportToPdf(data, filename);
-      }
+      // Create a blob and download link
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${filename}-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up
+      URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+
+      toast({
+        title: "تم التصدير بنجاح",
+        description: "تم تصدير البيانات بنجاح",
+      });
     } catch (error) {
       console.error("Error exporting data:", error);
-      alert("حدث خطأ أثناء تصدير البيانات");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const exportToCsv = (data: any[], filename: string) => {
-    if (!data.length) return;
-
-    const headers = Object.keys(data[0]);
-    const csvRows = [];
-
-    // Add headers
-    csvRows.push(headers.join(","));
-
-    // Add rows
-    for (const row of data) {
-      const values = headers.map((header) => {
-        const value = row[header];
-        return `"${value}"`;
+      toast({
+        title: "خطأ",
+        description: `حدث خطأ أثناء تصدير البيانات: ${error instanceof Error ? error.message : "خطأ غير معروف"}`,
+        variant: "destructive",
       });
-      csvRows.push(values.join(","));
+    } finally {
+      setIsExporting(false);
     }
-
-    const csvString = csvRows.join("\n");
-    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
-    downloadBlob(blob, `${filename}.csv`);
-  };
-
-  const exportToExcel = (data: any[], filename: string) => {
-    // In a real app, you would use a library like xlsx or exceljs
-    // For this demo, we'll just export as CSV
-    console.log("Exporting to Excel format", data);
-    exportToCsv(data, filename);
-  };
-
-  const exportToPdf = (data: any[], filename: string) => {
-    // In a real app, you would use a library like jspdf or pdfmake
-    console.log("Exporting to PDF format", data);
-    alert("PDF export would be implemented with a library like jsPDF");
-  };
-
-  const downloadBlob = (blob: Blob, filename: string) => {
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.setAttribute("hidden", "");
-    a.setAttribute("href", url);
-    a.setAttribute("download", filename);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" disabled={loading}>
-          {loading ? (
-            <LoadingSpinner size="sm" className="ml-2" />
-          ) : (
-            <FileDown className="ml-2 h-4 w-4" />
-          )}
-          تصدير البيانات
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => handleExport("pdf")}>
-          <FileText className="ml-2 h-4 w-4" />
-          تصدير كملف PDF
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleExport("excel")}>
-          <FileSpreadsheet className="ml-2 h-4 w-4" />
-          تصدير كملف Excel
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleExport("csv")}>
-          <FileType className="ml-2 h-4 w-4" />
-          تصدير كملف CSV
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button
+      variant="outline"
+      onClick={handleExport}
+      disabled={disabled || isExporting}
+    >
+      {isExporting ? (
+        <>
+          <LoadingSpinner size="sm" className="ml-2" />
+          جاري التصدير...
+        </>
+      ) : (
+        <>
+          <FileDown className="ml-2 h-4 w-4" />
+          تصدير
+        </>
+      )}
+    </Button>
   );
 }

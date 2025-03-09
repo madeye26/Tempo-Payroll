@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { Calculator, Save, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function FormulasPage() {
   const { hasPermission } = useAuth();
@@ -94,21 +95,22 @@ export default function FormulasPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold bg-gradient-to-l from-primary to-primary/70 bg-clip-text text-transparent inline-block">
-          معادلات الرواتب
-        </h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleReset}>
-            <RefreshCw className="ml-2 h-4 w-4" />
-            إعادة تعيين
-          </Button>
-          <Button onClick={handleSave}>
-            <Save className="ml-2 h-4 w-4" />
-            حفظ
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="معادلات الرواتب"
+        description="تعديل معادلات حساب الرواتب والخصومات"
+        actions={
+          <>
+            <Button variant="outline" onClick={handleReset}>
+              <RefreshCw className="ml-2 h-4 w-4" />
+              إعادة تعيين
+            </Button>
+            <Button onClick={handleSave}>
+              <Save className="ml-2 h-4 w-4" />
+              حفظ
+            </Button>
+          </>
+        }
+      />
 
       <Card className="p-6">
         <div className="space-y-6">

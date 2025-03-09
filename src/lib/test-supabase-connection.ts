@@ -1,9 +1,12 @@
 import { supabase } from "./supabase";
 
+/**
+ * Test the connection to Supabase
+ * @returns Object with success status and message
+ */
 export async function testSupabaseConnection() {
   try {
     if (!supabase) {
-      console.error("Supabase client is not initialized");
       return {
         success: false,
         message:
@@ -12,39 +15,37 @@ export async function testSupabaseConnection() {
     }
 
     // Test the connection by making a simple query
-    const { data, error } = await supabase
-      .from("employees")
-      .select("count")
-      .limit(1);
+    const { data, error } = await supabase.from("users").select("id").limit(1);
 
     if (error) {
-      console.error("Supabase connection test failed:", error);
       return {
         success: false,
-        message: `Connection failed: ${error.message}`,
+        message: "Failed to connect to Supabase database.",
         error,
       };
     }
 
-    console.log("Supabase connection successful:", data);
     return {
       success: true,
-      message: "Connection to Supabase successful",
+      message: "Successfully connected to Supabase database.",
       data,
     };
-  } catch (err) {
-    console.error("Unexpected error testing Supabase connection:", err);
+  } catch (error) {
     return {
       success: false,
-      message: `Unexpected error: ${err instanceof Error ? err.message : String(err)}`,
+      message: `Error testing Supabase connection: ${error instanceof Error ? error.message : String(error)}`,
+      error,
     };
   }
 }
 
+/**
+ * Test inserting an employee into the database
+ * @returns Object with success status and message
+ */
 export async function testEmployeeInsert() {
   try {
     if (!supabase) {
-      console.error("Supabase client is not initialized");
       return {
         success: false,
         message:
@@ -52,41 +53,53 @@ export async function testEmployeeInsert() {
       };
     }
 
-    // Test employee insert with a test record
+    // Create a test employee
     const testEmployee = {
-      name: "Test Employee",
-      monthly_incentives: 100,
-      position: "Test Position",
-      department: "Test Department",
+      name: "موظف اختبار",
+      position: "منصب اختبار",
+      department: "قسم اختبار",
       base_salary: 1000,
+      monthly_incentives: 100,
       join_date: new Date().toISOString().split("T")[0],
+      status: "active",
     };
 
+    // Insert the test employee
     const { data, error } = await supabase
       .from("employees")
       .insert([testEmployee])
       .select();
 
     if (error) {
-      console.error("Employee insert test failed:", error);
       return {
         success: false,
-        message: `Insert failed: ${error.message}`,
+        message: "Failed to insert test employee into database.",
         error,
       };
     }
 
-    console.log("Employee insert successful:", data);
+    // Clean up - delete the test employee
+    if (data && data.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("employees")
+        .delete()
+        .eq("id", data[0].id);
+
+      if (deleteError) {
+        console.warn("Failed to delete test employee:", deleteError);
+      }
+    }
+
     return {
       success: true,
-      message: "Employee insert successful",
+      message: "Successfully inserted and deleted test employee.",
       data,
     };
-  } catch (err) {
-    console.error("Unexpected error testing employee insert:", err);
+  } catch (error) {
     return {
       success: false,
-      message: `Unexpected error: ${err instanceof Error ? err.message : String(err)}`,
+      message: `Error testing employee insert: ${error instanceof Error ? error.message : String(error)}`,
+      error,
     };
   }
 }

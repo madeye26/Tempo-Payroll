@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Printer } from "lucide-react";
 
-interface PrintPayslipProps {
+interface PayslipProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   employeeData: {
@@ -35,110 +35,296 @@ export function PrintPayslip({
   open,
   onOpenChange,
   employeeData,
-}: PrintPayslipProps) {
+}: PayslipProps) {
+  const printRef = useRef<HTMLDivElement>(null);
+
   const handlePrint = () => {
-    const printContent = document.getElementById("payslip-content");
-    const originalContents = document.body.innerHTML;
+    const printContent = printRef.current?.innerHTML;
 
     if (printContent) {
-      document.body.innerHTML = printContent.innerHTML;
-      window.print();
-      document.body.innerHTML = originalContents;
-      onOpenChange(false);
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.open();
+        printWindow.document.write(`
+          <html dir="rtl">
+            <head>
+              <title>قسيمة راتب - ${employeeData.name}</title>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  padding: 20px;
+                  direction: rtl;
+                  max-width: 800px;
+                  margin: 0 auto;
+                }
+                .payslip {
+                  border: 1px solid #ccc;
+                  padding: 20px;
+                  width: 100%;
+                  box-sizing: border-box;
+                  margin: 0 auto;
+                }
+                .header {
+                  text-align: center;
+                  margin-bottom: 20px;
+                  border-bottom: 2px solid #333;
+                  padding-bottom: 10px;
+                }
+                .company-name {
+                  font-size: 24px;
+                  font-weight: bold;
+                  margin-bottom: 5px;
+                }
+                .payslip-title {
+                  font-size: 18px;
+                  margin-bottom: 5px;
+                }
+                .employee-info {
+                  display: flex;
+                  justify-content: space-between;
+                  margin-bottom: 20px;
+                }
+                .info-group {
+                  width: 48%;
+                }
+                .info-row {
+                  display: flex;
+                  justify-content: space-between;
+                  margin-bottom: 5px;
+                  padding: 5px 0;
+                  border-bottom: 1px dashed #eee;
+                }
+                .info-label {
+                  font-weight: bold;
+                }
+                .salary-details {
+                  display: flex;
+                  justify-content: space-between;
+                  margin-bottom: 20px;
+                }
+                .details-column {
+                  width: 48%;
+                }
+                .details-title {
+                  font-weight: bold;
+                  margin-bottom: 10px;
+                  padding-bottom: 5px;
+                  border-bottom: 1px solid #333;
+                }
+                .details-row {
+                  display: flex;
+                  justify-content: space-between;
+                  margin-bottom: 5px;
+                  padding: 5px 0;
+                  border-bottom: 1px dashed #eee;
+                }
+                .total-row {
+                  display: flex;
+                  justify-content: space-between;
+                  margin-top: 10px;
+                  padding-top: 10px;
+                  border-top: 1px solid #333;
+                  font-weight: bold;
+                }
+                .net-salary {
+                  text-align: center;
+                  margin-top: 20px;
+                  padding: 10px;
+                  background-color: #f9f9f9;
+                  border: 1px solid #ddd;
+                  border-radius: 5px;
+                }
+                .net-salary-label {
+                  font-weight: bold;
+                  margin-bottom: 5px;
+                }
+                .net-salary-value {
+                  font-size: 24px;
+                  font-weight: bold;
+                  color: #0891b2;
+                }
+                .signature-section {
+                  display: flex;
+                  justify-content: space-between;
+                  margin-top: 40px;
+                }
+                .signature-box {
+                  width: 40%;
+                }
+                .signature-line {
+                  border-top: 1px solid #333;
+                  margin-top: 40px;
+                  padding-top: 5px;
+                  text-align: center;
+                }
+                @media print {
+                  body {
+                    padding: 0;
+                    margin: 0;
+                  }
+                  .payslip {
+                    border: none;
+                    padding: 0;
+                  }
+                  .no-print {
+                    display: none;
+                  }
+                }
+              </style>
+            </head>
+            <body>
+              ${printContent}
+              <div class="no-print" style="text-align: center; margin-top: 20px;">
+                <button onclick="window.print()" style="padding: 10px 20px; background: #0891b2; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                  طباعة
+                </button>
+              </div>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+      }
     }
   };
 
+  // Get company name from system settings or use default
+  const systemSettings = JSON.parse(
+    localStorage.getItem("system_settings") || "{}",
+  );
+  const companyName = systemSettings.companyName || "شركتك";
+  const companyAddress = systemSettings.companyAddress || "القاهرة، مصر";
+
+  // Get month name in Arabic
+  const getMonthName = (monthNumber: string) => {
+    const months = [
+      "يناير",
+      "فبراير",
+      "مارس",
+      "أبريل",
+      "مايو",
+      "يونيو",
+      "يوليو",
+      "أغسطس",
+      "سبتمبر",
+      "أكتوبر",
+      "نوفمبر",
+      "ديسمبر",
+    ];
+    const index = parseInt(monthNumber) - 1;
+    return months[index] || monthNumber;
+  };
+
+  // Format date
+  const formattedDate = `${getMonthName(employeeData.month)} ${employeeData.year}`;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" dir="rtl">
+      <DialogContent
+        className="max-w-3xl overflow-y-auto max-h-[90vh]"
+        dir="rtl"
+      >
         <DialogHeader>
-          <DialogTitle className="text-center text-xl">
-            قسيمة الراتب
-          </DialogTitle>
+          <DialogTitle>قسيمة راتب</DialogTitle>
         </DialogHeader>
 
-        <div id="payslip-content" className="p-4 border rounded-md text-sm">
-          <div className="text-center mb-4 border-b pb-2">
-            <h2 className="text-lg font-bold">شركتك</h2>
-            <p className="text-xs text-muted-foreground">القاهرة، مصر</p>
-            <p className="text-xs mt-1">
-              قسيمة راتب: {employeeData.month} {employeeData.year}
-            </p>
+        <div ref={printRef} className="payslip bg-white p-6 border rounded-md">
+          <div className="header">
+            <div className="company-name">{companyName}</div>
+            <div className="payslip-title">قسيمة راتب</div>
+            <div>{companyAddress}</div>
+            <div>الفترة: {formattedDate}</div>
           </div>
 
-          <div className="mb-3 border-b pb-2 text-xs">
-            <div className="flex justify-between mb-1">
-              <span className="font-medium">الاسم:</span>
-              <span>{employeeData.name}</span>
+          <div className="employee-info">
+            <div className="info-group">
+              <div className="info-row">
+                <div className="info-label">اسم الموظف:</div>
+                <div>{employeeData.name}</div>
+              </div>
+              <div className="info-row">
+                <div className="info-label">المنصب:</div>
+                <div>{employeeData.position}</div>
+              </div>
             </div>
-            <div className="flex justify-between mb-1">
-              <span className="font-medium">المنصب:</span>
-              <span>{employeeData.position}</span>
-            </div>
-            <div className="flex justify-between mb-1">
-              <span className="font-medium">القسم:</span>
-              <span>{employeeData.department}</span>
-            </div>
-          </div>
-
-          <div className="mb-3 text-xs">
-            <h3 className="font-semibold mb-1 border-b">الإضافات</h3>
-            <div className="flex justify-between mb-1">
-              <span>الراتب الأساسي</span>
-              <span>{employeeData.baseSalary} ج.م</span>
-            </div>
-            <div className="flex justify-between mb-1">
-              <span>الحوافز</span>
-              <span>{employeeData.incentives} ج.م</span>
-            </div>
-            <div className="flex justify-between mb-1">
-              <span>المكافآت</span>
-              <span>{employeeData.bonuses} ج.م</span>
-            </div>
-            <div className="flex justify-between mb-1">
-              <span>الأوفرتايم</span>
-              <span>{employeeData.overtime} ج.م</span>
-            </div>
-            <div className="flex justify-between font-semibold border-t pt-1">
-              <span>إجمالي الإضافات</span>
-              <span>{employeeData.totalAdditions} ج.م</span>
+            <div className="info-group">
+              <div className="info-row">
+                <div className="info-label">القسم:</div>
+                <div>{employeeData.department}</div>
+              </div>
+              <div className="info-row">
+                <div className="info-label">تاريخ الراتب:</div>
+                <div>{formattedDate}</div>
+              </div>
             </div>
           </div>
 
-          <div className="mb-3 text-xs">
-            <h3 className="font-semibold mb-1 border-b">الخصومات</h3>
-            <div className="flex justify-between mb-1">
-              <span>الخصومات العامة</span>
-              <span>{employeeData.deductions} ج.م</span>
+          <div className="salary-details">
+            <div className="details-column">
+              <div className="details-title">الإضافات</div>
+              <div className="details-row">
+                <div>الراتب الأساسي</div>
+                <div>{employeeData.baseSalary.toLocaleString()} ج.م</div>
+              </div>
+              <div className="details-row">
+                <div>الحوافز</div>
+                <div>{employeeData.incentives.toLocaleString()} ج.م</div>
+              </div>
+              <div className="details-row">
+                <div>المكافآت</div>
+                <div>{employeeData.bonuses.toLocaleString()} ج.م</div>
+              </div>
+              <div className="details-row">
+                <div>الأوفرتايم</div>
+                <div>{employeeData.overtime.toLocaleString()} ج.م</div>
+              </div>
+              <div className="total-row">
+                <div>إجمالي الإضافات</div>
+                <div>{employeeData.totalAdditions.toLocaleString()} ج.م</div>
+              </div>
             </div>
-            <div className="flex justify-between mb-1">
-              <span>السلف</span>
-              <span>{employeeData.advances} ج.م</span>
-            </div>
-            <div className="flex justify-between mb-1">
-              <span>المشتريات</span>
-              <span>{employeeData.purchases} ج.م</span>
-            </div>
-            <div className="flex justify-between font-semibold border-t pt-1">
-              <span>إجمالي الخصومات</span>
-              <span>{employeeData.totalDeductions} ج.م</span>
+            <div className="details-column">
+              <div className="details-title">الخصومات</div>
+              <div className="details-row">
+                <div>الخصومات</div>
+                <div>{employeeData.deductions.toLocaleString()} ج.م</div>
+              </div>
+              <div className="details-row">
+                <div>السلف</div>
+                <div>{employeeData.advances.toLocaleString()} ج.م</div>
+              </div>
+              <div className="details-row">
+                <div>المشتريات</div>
+                <div>{employeeData.purchases.toLocaleString()} ج.م</div>
+              </div>
+              <div className="details-row">
+                <div>خصومات أخرى</div>
+                <div>0 ج.م</div>
+              </div>
+              <div className="total-row">
+                <div>إجمالي الخصومات</div>
+                <div>{employeeData.totalDeductions.toLocaleString()} ج.م</div>
+              </div>
             </div>
           </div>
 
-          <div className="bg-muted p-2 rounded-md mb-3">
-            <div className="flex justify-between items-center">
-              <span className="font-bold">صافي الراتب</span>
-              <span className="font-bold">{employeeData.netSalary} ج.م</span>
+          <div className="net-salary">
+            <div className="net-salary-label">صافي الراتب</div>
+            <div className="net-salary-value">
+              {employeeData.netSalary.toLocaleString()} ج.م
             </div>
           </div>
 
-          <div className="text-center text-xs text-muted-foreground border-t pt-2">
-            <p>تاريخ الإصدار: {new Date().toLocaleDateString("ar-EG")}</p>
-            <p>© {new Date().getFullYear()} شركتك</p>
+          <div className="signature-section">
+            <div className="signature-box">
+              <div className="signature-line">توقيع الموظف</div>
+            </div>
+            <div className="signature-box">
+              <div className="signature-line">توقيع المدير</div>
+            </div>
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             إغلاق
           </Button>

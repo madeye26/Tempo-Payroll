@@ -8,7 +8,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "./alert-dialog";
+import { LoadingSpinner } from "./loading-spinner";
 
 interface ConfirmationDialogProps {
   open: boolean;
@@ -18,7 +19,9 @@ interface ConfirmationDialogProps {
   confirmText?: string;
   cancelText?: string;
   onConfirm: () => void;
-  confirmVariant?: "default" | "destructive";
+  isLoading?: boolean;
+  variant?: "default" | "destructive";
+  icon?: React.ReactNode;
 }
 
 export function ConfirmationDialog({
@@ -29,26 +32,44 @@ export function ConfirmationDialog({
   confirmText = "تأكيد",
   cancelText = "إلغاء",
   onConfirm,
-  confirmVariant = "default",
+  isLoading = false,
+  variant = "default",
+  icon,
 }: ConfirmationDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent dir="rtl">
         <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogTitle>
+            {icon && <span className="mr-2">{icon}</span>}
+            {title}
+          </AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-row-reverse justify-start gap-2">
-          <AlertDialogCancel>{cancelText}</AlertDialogCancel>
+          <AlertDialogCancel disabled={isLoading}>
+            {cancelText}
+          </AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={(e) => {
+              e.preventDefault();
+              onConfirm();
+            }}
             className={
-              confirmVariant === "destructive"
+              variant === "destructive"
                 ? "bg-destructive hover:bg-destructive/90"
                 : ""
             }
+            disabled={isLoading}
           >
-            {confirmText}
+            {isLoading ? (
+              <>
+                <LoadingSpinner size="sm" className="ml-2" />
+                جاري التنفيذ...
+              </>
+            ) : (
+              confirmText
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

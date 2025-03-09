@@ -56,7 +56,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-sm p-4 shadow-sm">
+    <header className="sticky top-0 z-40 border-b bg-card/90 backdrop-blur-sm p-4 shadow-sm transition-all duration-200">
       <div className="flex items-center justify-between" dir="rtl">
         <div className="flex items-center gap-2">
           <img
@@ -101,7 +101,10 @@ export function Header() {
                 >
                   <Avatar className="h-9 w-9">
                     <AvatarImage
-                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`}
+                      src={
+                        user.avatar ||
+                        `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`
+                      }
                       alt={user.name}
                     />
                     <AvatarFallback>{user.name.substring(0, 2)}</AvatarFallback>

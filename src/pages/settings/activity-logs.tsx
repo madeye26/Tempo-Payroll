@@ -31,6 +31,7 @@ import { getActivityLogs, ActivityLog } from "@/lib/activity-logger";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { PageHeader } from "@/components/ui/page-header";
 import { DataExport } from "@/components/ui/data-export";
 
 export default function ActivityLogsPage() {
@@ -52,20 +53,54 @@ export default function ActivityLogsPage() {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const filters: any = {};
-      if (userFilter) filters.userId = userFilter;
-      if (typeFilter) filters.type = typeFilter;
-      if (actionFilter) filters.action = actionFilter;
-      if (startDate) filters.startDate = startDate.toISOString();
-      if (endDate) filters.endDate = endDate.toISOString();
+      // Get logs directly from localStorage for reliability
+      const allLogs = JSON.parse(localStorage.getItem("activity_logs") || "[]");
+      console.log("All activity logs from localStorage:", allLogs);
 
-      const { logs: fetchedLogs, total } = await getActivityLogs(
-        page,
-        limit,
-        filters,
-      );
-      setLogs(fetchedLogs);
+      // Apply filters
+      let filteredLogs = allLogs;
+      if (userFilter) {
+        filteredLogs = filteredLogs.filter((log) => log.user_id === userFilter);
+      }
+      if (typeFilter) {
+        filteredLogs = filteredLogs.filter((log) => log.type === typeFilter);
+      }
+      if (actionFilter) {
+        filteredLogs = filteredLogs.filter(
+          (log) => log.action === actionFilter,
+        );
+      }
+      if (startDate) {
+        filteredLogs = filteredLogs.filter(
+          (log) => new Date(log.created_at) >= startDate,
+        );
+      }
+      if (endDate) {
+        filteredLogs = filteredLogs.filter(
+          (log) => new Date(log.created_at) <= endDate,
+        );
+      }
+
+      // Apply pagination
+      const total = filteredLogs.length;
+      const from = (page - 1) * limit;
+      const to = from + limit;
+      const paginatedLogs = filteredLogs.slice(from, to);
+
+      // Get user information
+      const users = JSON.parse(localStorage.getItem("users") || "[]");
+      const logsWithUserInfo = paginatedLogs.map((log) => {
+        const user = users.find((u: any) => u.id === log.user_id);
+        return {
+          ...log,
+          user_name: user?.name || "غير معروف",
+          user_email: user?.email || "غير معروف",
+        };
+      });
+
+      setLogs(logsWithUserInfo);
       setTotalLogs(total);
+      console.log("Filtered and paginated logs:", logsWithUserInfo);
     } catch (error) {
       console.error("Error fetching activity logs:", error);
     } finally {
@@ -244,28 +279,29 @@ export default function ActivityLogsPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold bg-gradient-to-l from-primary to-primary/70 bg-clip-text text-transparent inline-block">
-          سجل النشاطات
-        </h1>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="ml-2 h-4 w-4" />
-            {showFilters ? "إخفاء الفلاتر" : "عرض الفلاتر"}
-          </Button>
-          <Button variant="outline" onClick={fetchLogs}>
-            <RefreshCw className="ml-2 h-4 w-4" />
-            تحديث
-          </Button>
-          <DataExport
-            data={logs}
-            filename={`activity-logs-${format(new Date(), "yyyy-MM-dd")}`}
-          />
-        </div>
-      </div>
+      <PageHeader
+        title="سجل النشاطات"
+        description="عرض وتتبع جميع النشاطات في النظام"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="ml-2 h-4 w-4" />
+              {showFilters ? "إخفاء الفلاتر" : "عرض الفلاتر"}
+            </Button>
+            <Button variant="outline" onClick={fetchLogs}>
+              <RefreshCw className="ml-2 h-4 w-4" />
+              تحديث
+            </Button>
+            <DataExport
+              data={logs}
+              filename={`activity-logs-${format(new Date(), "yyyy-MM-dd")}`}
+            />
+          </>
+        }
+      />
 
       {showFilters && (
         <Card className="p-6">

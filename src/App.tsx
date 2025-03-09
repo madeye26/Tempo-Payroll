@@ -1,9 +1,10 @@
 import React, { Suspense, lazy, useEffect } from "react";
+import { LoadingPage } from "./components/ui/loading-page";
 import { useRoutes, Routes, Route, Navigate } from "react-router-dom";
 import routes from "tempo-routes";
 import { MainLayout } from "./components/layout/main-layout";
 import { Toaster } from "./components/ui/toaster";
-import { AuthProvider } from "./lib/hooks/use-auth.tsx";
+import { AuthProvider } from "./lib/hooks/use-auth-context";
 import { ProtectedRoute } from "./components/auth/protected-route";
 
 // Lazy load pages
@@ -197,13 +198,7 @@ function App() {
 
   return (
     <AuthProvider>
-      <Suspense
-        fallback={
-          <div className="flex h-screen items-center justify-center">
-            جاري التحميل...
-          </div>
-        }
-      >
+      <Suspense fallback={<LoadingPage />}>
         <>
           {/* Tempo routes need to be defined before regular routes */}
           {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}

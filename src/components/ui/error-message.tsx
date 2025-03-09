@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
 interface ErrorMessageProps {
   message: string;
@@ -11,9 +11,9 @@ export function ErrorMessage({ message, className = "" }: ErrorMessageProps) {
 
   return (
     <div
-      className={`flex items-center gap-1 text-destructive text-sm mt-1 ${className}`}
+      className={`flex items-start gap-2 p-3 bg-red-50 text-red-600 rounded-md text-sm ${className}`}
     >
-      <AlertCircle className="h-3.5 w-3.5" />
+      <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
       <span>{message}</span>
     </div>
   );

@@ -16,6 +16,7 @@ import {
 import { useEmployees } from "@/lib/hooks/use-employees";
 import { supabase } from "@/lib/supabase";
 import { FadeIn, SlideIn, AnimatedList } from "@/components/ui/animations";
+import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -391,11 +392,10 @@ export function EnhancedDashboard() {
 
   return (
     <div className="space-y-8" dir="rtl">
-      <FadeIn>
-        <h1 className="text-3xl font-bold bg-gradient-to-l from-primary to-primary/70 bg-clip-text text-transparent inline-block mb-2">
-          لوحة التحكم
-        </h1>
-      </FadeIn>
+      <PageHeader
+        title="لوحة التحكم"
+        description="نظرة عامة على أداء النظام والإحصائيات"
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
         <TabsList className="mb-4">

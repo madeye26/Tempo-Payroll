@@ -110,6 +110,11 @@ export function Sidebar() {
       href: "/settings",
     },
     {
+      icon: <Users className="h-5 w-5" />,
+      label: "إدارة المستخدمين",
+      href: "/settings/users",
+    },
+    {
       icon: <FileText className="h-5 w-5" />,
       label: "النسخ الاحتياطي",
       href: "/settings/backup",

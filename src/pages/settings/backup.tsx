@@ -3,6 +3,7 @@ import { DataBackup } from "@/components/ui/data-backup";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { FadeIn } from "@/components/ui/animations";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function BackupPage() {
   const { hasPermission } = useAuth();
@@ -19,11 +20,10 @@ export default function BackupPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <FadeIn>
-        <h1 className="text-3xl font-bold bg-gradient-to-l from-primary to-primary/70 bg-clip-text text-transparent inline-block">
-          النسخ الاحتياطي واستعادة البيانات
-        </h1>
-      </FadeIn>
+      <PageHeader
+        title="النسخ الاحتياطي واستعادة البيانات"
+        description="قم بإنشاء نسخة احتياطية من بيانات النظام أو استعادة البيانات من نسخة احتياطية سابقة"
+      />
 
       <FadeIn delay={0.2}>
         <p className="text-muted-foreground">

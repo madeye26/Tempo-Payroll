@@ -9,7 +9,7 @@ interface EmployeeStatusProps {
     name: string;
     position: string;
     status: "present" | "absent" | "leave" | "late";
-    avatar?: string;
+    avatar: string;
   }[];
 }
 
@@ -25,7 +25,7 @@ export function EmployeeStatus({ employees }: EmployeeStatusProps) {
       case "late":
         return <Badge className="bg-yellow-100 text-yellow-800">متأخر</Badge>;
       default:
-        return null;
+        return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>;
     }
   };
 
@@ -35,23 +35,34 @@ export function EmployeeStatus({ employees }: EmployeeStatusProps) {
         حالة الموظفين اليوم
       </h3>
       <div className="space-y-4">
-        {employees.map((employee) => (
-          <div key={employee.id} className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Avatar>
-                <AvatarImage src={employee.avatar} />
-                <AvatarFallback>{employee.name.substring(0, 2)}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-medium text-right">{employee.name}</p>
-                <p className="text-sm text-muted-foreground text-right">
-                  {employee.position}
-                </p>
+        {employees.length > 0 ? (
+          employees.map((employee) => (
+            <div
+              key={employee.id}
+              className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Avatar>
+                  <AvatarImage src={employee.avatar} alt={employee.name} />
+                  <AvatarFallback>
+                    {employee.name.substring(0, 2)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{employee.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {employee.position}
+                  </p>
+                </div>
               </div>
+              {getStatusBadge(employee.status)}
             </div>
-            {getStatusBadge(employee.status)}
+          ))
+        ) : (
+          <div className="text-center py-4 text-muted-foreground">
+            لا يوجد موظفين لعرضهم
           </div>
-        ))}
+        )}
       </div>
     </Card>
   );

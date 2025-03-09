@@ -1,71 +1,72 @@
 import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { Download, Upload, Save, FileUp, FileDown } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { Card } from "./card";
+import { Button } from "./button";
+import { Input } from "./input";
+import { Label } from "./label";
+import { LoadingSpinner } from "./loading-spinner";
+import { useToast } from "./use-toast";
+import { Download, Upload, Save, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./alert-dialog";
 
 export function DataBackup() {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const { toast } = useToast();
 
-  // Get all data from localStorage
-  const exportData = () => {
+  const handleExport = () => {
     setIsExporting(true);
     try {
-      // Collect all data from localStorage
-      const data: Record<string, any> = {};
-      const keys = [
-        "employees",
-        "salaries",
-        "advances",
-        "absences",
-        "users",
-        "activity_logs",
-        "system_settings",
-        "mock_auth_users",
-      ];
+      // Get all data from localStorage
+      const data = {
+        employees: JSON.parse(localStorage.getItem("employees") || "[]"),
+        advances: JSON.parse(localStorage.getItem("advances") || "[]"),
+        absences: JSON.parse(localStorage.getItem("absences") || "[]"),
+        salaries: JSON.parse(localStorage.getItem("salaries") || "[]"),
+        users: JSON.parse(localStorage.getItem("users") || "[]"),
+        activity_logs: JSON.parse(
+          localStorage.getItem("activity_logs") || "[]",
+        ),
+        system_settings: JSON.parse(
+          localStorage.getItem("system_settings") || "{}",
+        ),
+        // Add any other data you want to backup
+      };
 
-      keys.forEach((key) => {
-        const value = localStorage.getItem(key);
-        if (value) {
-          try {
-            data[key] = JSON.parse(value);
-          } catch (e) {
-            data[key] = value;
-          }
-        }
-      });
-
-      // Create a JSON file
+      // Convert to JSON string
       const jsonString = JSON.stringify(data, null, 2);
+
+      // Create a blob and download link
       const blob = new Blob([jsonString], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-
-      // Create a download link
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `salary-system-backup-${new Date().toISOString().split("T")[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `salary-system-backup-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
 
       // Clean up
-      document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      document.body.removeChild(link);
 
       toast({
-        title: "تم تصدير البيانات بنجاح",
-        description: "تم حفظ ملف النسخة الاحتياطية",
+        title: "تم التصدير بنجاح",
+        description: "تم تصدير بيانات النظام بنجاح",
       });
     } catch (error) {
       console.error("Error exporting data:", error);
       toast({
-        title: "خطأ في تصدير البيانات",
+        title: "خطأ",
         description: `حدث خطأ أثناء تصدير البيانات: ${error instanceof Error ? error.message : "خطأ غير معروف"}`,
         variant: "destructive",
       });
@@ -74,23 +75,20 @@ export function DataBackup() {
     }
   };
 
-  // Handle file selection
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setImportFile(e.target.files[0]);
+  const handleImportClick = () => {
+    if (importFile) {
+      setConfirmDialogOpen(true);
+    } else {
+      toast({
+        title: "خطأ",
+        description: "الرجاء اختيار ملف للاستيراد",
+        variant: "destructive",
+      });
     }
   };
 
-  // Import data from file
-  const importData = async () => {
-    if (!importFile) {
-      toast({
-        title: "لم يتم اختيار ملف",
-        description: "يرجى اختيار ملف النسخة الاحتياطية أولاً",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleImport = async () => {
+    if (!importFile) return;
 
     setIsImporting(true);
     try {
@@ -99,47 +97,65 @@ export function DataBackup() {
       const data = JSON.parse(fileContent);
 
       // Validate the data structure
-      const requiredKeys = ["employees", "users"];
-      const missingKeys = requiredKeys.filter((key) => !data[key]);
-
-      if (missingKeys.length > 0) {
-        throw new Error(
-          `الملف غير صالح. البيانات المفقودة: ${missingKeys.join(", ")}`,
-        );
+      if (!data.employees || !data.advances || !data.users) {
+        throw new Error("الملف غير صالح أو لا يحتوي على البيانات المطلوبة");
       }
 
-      // Backup current data before importing
-      const currentData: Record<string, string> = {};
-      Object.keys(data).forEach((key) => {
-        const value = localStorage.getItem(key);
-        if (value) {
-          currentData[key] = value;
-        }
-      });
-
-      // Store backup in case we need to restore
+      // Create a backup of current data before importing
+      const currentData = {
+        employees: JSON.parse(localStorage.getItem("employees") || "[]"),
+        advances: JSON.parse(localStorage.getItem("advances") || "[]"),
+        absences: JSON.parse(localStorage.getItem("absences") || "[]"),
+        salaries: JSON.parse(localStorage.getItem("salaries") || "[]"),
+        users: JSON.parse(localStorage.getItem("users") || "[]"),
+        activity_logs: JSON.parse(
+          localStorage.getItem("activity_logs") || "[]",
+        ),
+        system_settings: JSON.parse(
+          localStorage.getItem("system_settings") || "{}",
+        ),
+      };
       localStorage.setItem(
         "_backup_before_import",
         JSON.stringify(currentData),
       );
 
       // Import the data
-      Object.keys(data).forEach((key) => {
-        localStorage.setItem(key, JSON.stringify(data[key]));
-      });
+      localStorage.setItem("employees", JSON.stringify(data.employees));
+      localStorage.setItem("advances", JSON.stringify(data.advances));
+      localStorage.setItem("absences", JSON.stringify(data.absences || []));
+      localStorage.setItem("salaries", JSON.stringify(data.salaries || []));
+      localStorage.setItem("users", JSON.stringify(data.users));
+      localStorage.setItem(
+        "activity_logs",
+        JSON.stringify(data.activity_logs || []),
+      );
+
+      if (data.system_settings) {
+        localStorage.setItem(
+          "system_settings",
+          JSON.stringify(data.system_settings),
+        );
+      }
 
       toast({
-        title: "تم استيراد البيانات بنجاح",
+        title: "تم الاستيراد بنجاح",
         description:
-          "تم استعادة البيانات من النسخة الاحتياطية. قد تحتاج إلى إعادة تحميل الصفحة لرؤية التغييرات.",
+          "تم استيراد بيانات النظام بنجاح. قم بتحديث الصفحة لرؤية التغييرات.",
       });
 
-      // Reset file input
+      // Close the dialog
+      setConfirmDialogOpen(false);
       setImportFile(null);
+
+      // Reload the page to reflect changes
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (error) {
       console.error("Error importing data:", error);
       toast({
-        title: "خطأ في استيراد البيانات",
+        title: "خطأ",
         description: `حدث خطأ أثناء استيراد البيانات: ${error instanceof Error ? error.message : "خطأ غير معروف"}`,
         variant: "destructive",
       });
@@ -148,111 +164,164 @@ export function DataBackup() {
     }
   };
 
-  // Restore data from backup
-  const restoreFromBackup = () => {
+  const handleRestoreBackup = () => {
     try {
-      const backup = localStorage.getItem("_backup_before_import");
-      if (!backup) {
+      // Check if there's a backup
+      const backupData = localStorage.getItem("_backup_before_import");
+      if (!backupData) {
         toast({
-          title: "لا توجد نسخة احتياطية",
-          description: "لم يتم العثور على نسخة احتياطية للاستعادة منها",
+          title: "خطأ",
+          description: "لا توجد نسخة احتياطية للاستعادة",
           variant: "destructive",
         });
         return;
       }
 
-      const backupData = JSON.parse(backup);
-      Object.keys(backupData).forEach((key) => {
-        localStorage.setItem(key, backupData[key]);
-      });
+      // Parse the backup data
+      const data = JSON.parse(backupData);
+
+      // Restore the data
+      localStorage.setItem("employees", JSON.stringify(data.employees));
+      localStorage.setItem("advances", JSON.stringify(data.advances));
+      localStorage.setItem("absences", JSON.stringify(data.absences || []));
+      localStorage.setItem("salaries", JSON.stringify(data.salaries || []));
+      localStorage.setItem("users", JSON.stringify(data.users));
+      localStorage.setItem(
+        "activity_logs",
+        JSON.stringify(data.activity_logs || []),
+      );
+
+      if (data.system_settings) {
+        localStorage.setItem(
+          "system_settings",
+          JSON.stringify(data.system_settings),
+        );
+      }
 
       toast({
-        title: "تم استعادة البيانات بنجاح",
-        description: "تم استعادة البيانات من النسخة الاحتياطية السابقة",
+        title: "تم الاستعادة بنجاح",
+        description:
+          "تم استعادة بيانات النظام من النسخة الاحتياطية بنجاح. قم بتحديث الصفحة لرؤية التغييرات.",
       });
+
+      // Reload the page to reflect changes
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (error) {
-      console.error("Error restoring from backup:", error);
+      console.error("Error restoring backup:", error);
       toast({
-        title: "خطأ في استعادة البيانات",
-        description: `حدث خطأ أثناء استعادة البيانات: ${error instanceof Error ? error.message : "خطأ غير معروف"}`,
+        title: "خطأ",
+        description: `حدث خطأ أثناء استعادة النسخة الاحتياطية: ${error instanceof Error ? error.message : "خطأ غير معروف"}`,
         variant: "destructive",
       });
     }
   };
 
   return (
-    <Card className="p-6">
-      <h2 className="text-xl font-semibold mb-4">
-        النسخ الاحتياطي واستعادة البيانات
-      </h2>
-      <div className="space-y-6">
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">تصدير البيانات</h3>
-          <p className="text-muted-foreground">
-            قم بتصدير جميع بيانات النظام كملف JSON للنسخ الاحتياطي. يتضمن ذلك
-            بيانات الموظفين والرواتب والسلف والإجازات وإعدادات النظام.
-          </p>
-          <Button onClick={exportData} disabled={isExporting}>
-            {isExporting ? (
-              <>
-                <LoadingSpinner size="sm" className="ml-2" />
-                جاري التصدير...
-              </>
-            ) : (
-              <>
-                <FileDown className="ml-2 h-4 w-4" />
-                تصدير البيانات
-              </>
-            )}
-          </Button>
-        </div>
+    <div className="space-y-6">
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-4">تصدير البيانات</h2>
+        <p className="text-muted-foreground mb-4">
+          قم بتصدير جميع بيانات النظام إلى ملف JSON. يمكنك استخدام هذا الملف
+          لاستعادة البيانات لاحقاً.
+        </p>
+        <Button onClick={handleExport} disabled={isExporting}>
+          {isExporting ? (
+            <>
+              <LoadingSpinner size="sm" className="ml-2" />
+              جاري التصدير...
+            </>
+          ) : (
+            <>
+              <Download className="ml-2 h-4 w-4" />
+              تصدير البيانات
+            </>
+          )}
+        </Button>
+      </Card>
 
-        <Separator />
-
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-4">استيراد البيانات</h2>
+        <p className="text-muted-foreground mb-4">
+          قم باستيراد بيانات النظام من ملف JSON تم تصديره مسبقاً. سيتم استبدال
+          جميع البيانات الحالية بالبيانات المستوردة.
+        </p>
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">استيراد البيانات</h3>
-          <p className="text-muted-foreground">
-            قم باستيراد البيانات من ملف نسخة احتياطية سابقة. سيؤدي ذلك إلى
-            استبدال البيانات الحالية.
-          </p>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="import-file">اختر ملف النسخة الاحتياطية</Label>
-              <Input
-                id="import-file"
-                type="file"
-                accept=".json"
-                onChange={handleFileChange}
-              />
-            </div>
-            <div className="flex gap-4">
-              <Button
-                onClick={importData}
-                disabled={!importFile || isImporting}
-              >
-                {isImporting ? (
-                  <>
-                    <LoadingSpinner size="sm" className="ml-2" />
-                    جاري الاستيراد...
-                  </>
-                ) : (
-                  <>
-                    <FileUp className="ml-2 h-4 w-4" />
-                    استيراد البيانات
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={restoreFromBackup}
-                disabled={!localStorage.getItem("_backup_before_import")}
-              >
-                استعادة من النسخة الاحتياطية السابقة
-              </Button>
-            </div>
+          <div className="space-y-2">
+            <Label>اختر ملف الاستيراد</Label>
+            <Input
+              type="file"
+              accept=".json"
+              onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+              className="text-right"
+            />
+          </div>
+          <div className="flex gap-4">
+            <Button
+              onClick={handleImportClick}
+              disabled={isImporting || !importFile}
+            >
+              {isImporting ? (
+                <>
+                  <LoadingSpinner size="sm" className="ml-2" />
+                  جاري الاستيراد...
+                </>
+              ) : (
+                <>
+                  <Upload className="ml-2 h-4 w-4" />
+                  استيراد البيانات
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleRestoreBackup}
+              disabled={!localStorage.getItem("_backup_before_import")}
+            >
+              <Save className="ml-2 h-4 w-4" />
+              استعادة النسخة الاحتياطية السابقة
+            </Button>
           </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد استيراد البيانات</AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="flex items-start gap-2 mb-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <span>
+                  سيتم استبدال جميع البيانات الحالية بالبيانات المستوردة. هذا
+                  الإجراء لا يمكن التراجع عنه.
+                </span>
+              </div>
+              <p>
+                سيتم إنشاء نسخة احتياطية من البيانات الحالية قبل الاستيراد يمكنك
+                استعادتها في حالة حدوث أي مشكلة.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse justify-start gap-2">
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleImport}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isImporting ? (
+                <>
+                  <LoadingSpinner size="sm" className="ml-2" />
+                  جاري الاستيراد...
+                </>
+              ) : (
+                "تأكيد الاستيراد"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
