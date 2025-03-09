@@ -28,8 +28,13 @@ export default function SalariesPage() {
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const editId = searchParams.get("edit");
+    const pathParts = location.pathname.split("/");
+    const pathEditId = pathParts[pathParts.length - 1];
+
     if (editId) {
       setEditingSalaryId(editId);
+    } else if (pathParts.includes("edit") && pathEditId) {
+      setEditingSalaryId(pathEditId);
     }
   }, [location]);
   const { employees } = useEmployees();

@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,13 +44,13 @@ export function EmployeeDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const form = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
-    defaultValues: employee || {
-      name: "",
-      monthly_incentives: "0",
-      position: "",
-      department: "",
-      base_salary: "",
-      join_date: new Date().toISOString().split("T")[0],
+    defaultValues: {
+      name: employee?.name || "",
+      monthly_incentives: employee?.monthly_incentives?.toString() || "0",
+      position: employee?.position || "",
+      department: employee?.department || "",
+      base_salary: employee?.base_salary?.toString() || "",
+      join_date: employee?.join_date || new Date().toISOString().split("T")[0],
     },
   });
 
@@ -131,11 +132,20 @@ export function EmployeeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]" dir="rtl">
+      <DialogContent
+        className="sm:max-w-[425px]"
+        dir="rtl"
+        aria-describedby="employee-dialog-description"
+      >
         <DialogHeader>
           <DialogTitle>
             {employee?.id ? "تعديل بيانات الموظف" : "إضافة موظف جديد"}
           </DialogTitle>
+          <DialogDescription id="employee-dialog-description">
+            {employee?.id
+              ? "قم بتعديل بيانات الموظف"
+              : "قم بإدخال بيانات الموظف الجديد"}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">

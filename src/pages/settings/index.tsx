@@ -1,191 +1,98 @@
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { BackupRestore } from "@/components/salary-calculator/backup-restore";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/lib/hooks/use-auth.tsx";
+import {
+  Users,
+  FileText,
+  Calculator,
+  Database,
+  Settings as SettingsIcon,
+  HelpCircle,
+} from "lucide-react";
 
 export default function SettingsPage() {
+  const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+
+  const settingsOptions = [
+    {
+      title: "إدارة المستخدمين",
+      description: "إضافة وتعديل وحذف المستخدمين وإدارة الصلاحيات",
+      icon: <Users className="h-8 w-8" />,
+      path: "/settings/users",
+      permission: "manage_users",
+    },
+    {
+      title: "سجل النشاطات",
+      description: "عرض سجل نشاطات المستخدمين في النظام",
+      icon: <FileText className="h-8 w-8" />,
+      path: "/settings/activity-logs",
+      permission: "manage_settings",
+    },
+    {
+      title: "معادلات الرواتب",
+      description: "تعديل معادلات حساب الرواتب والخصومات",
+      icon: <Calculator className="h-8 w-8" />,
+      path: "/settings/formulas",
+      permission: "manage_settings",
+    },
+    {
+      title: "اختبار الاتصال",
+      description: "اختبار الاتصال بقاعدة البيانات",
+      icon: <Database className="h-8 w-8" />,
+      path: "/test-connection",
+      permission: "manage_settings",
+    },
+    {
+      title: "إعدادات النظام",
+      description: "تعديل إعدادات النظام العامة",
+      icon: <SettingsIcon className="h-8 w-8" />,
+      path: "/settings/system",
+      permission: "manage_settings",
+    },
+    {
+      title: "المساعدة",
+      description: "دليل استخدام النظام والأسئلة الشائعة",
+      icon: <HelpCircle className="h-8 w-8" />,
+      path: "/settings/help",
+      permission: "view_dashboard",
+    },
+  ];
+
   return (
     <div className="space-y-6" dir="rtl">
       <h1 className="text-3xl font-bold bg-gradient-to-l from-primary to-primary/70 bg-clip-text text-transparent inline-block">
         الإعدادات
       </h1>
 
-      <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="general">إعدادات عامة</TabsTrigger>
-          <TabsTrigger value="company">بيانات الشركة</TabsTrigger>
-          <TabsTrigger value="salary">إعدادات الرواتب</TabsTrigger>
-          <TabsTrigger value="backup">النسخ الاحتياطي</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general" className="space-y-6 mt-6">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">الإعدادات العامة</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>الوضع الداكن</Label>
-                  <p className="text-sm text-muted-foreground">
-                    تفعيل الوضع الداكن للتطبيق
-                  </p>
-                </div>
-                <Switch />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>الإشعارات</Label>
-                  <p className="text-sm text-muted-foreground">
-                    تفعيل الإشعارات داخل التطبيق
-                  </p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>تنبيهات البريد الإلكتروني</Label>
-                  <p className="text-sm text-muted-foreground">
-                    إرسال تنبيهات عبر البريد الإلكتروني
-                  </p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-            </div>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="company" className="space-y-6 mt-6">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">بيانات الشركة</h2>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>اسم الشركة</Label>
-                  <Input defaultValue="شركتك" className="text-right" />
-                </div>
-                <div className="space-y-2">
-                  <Label>البريد الإلكتروني</Label>
-                  <Input
-                    defaultValue="info@example.com"
-                    className="text-right"
-                    dir="ltr"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>رقم الهاتف</Label>
-                  <Input
-                    defaultValue="+20123456789"
-                    className="text-right"
-                    dir="ltr"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>العنوان</Label>
-                  <Input defaultValue="القاهرة، مصر" className="text-right" />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>شعار الشركة</Label>
-                  <div className="flex items-center gap-4">
-                    <img
-                      src="https://api.dicebear.com/7.x/initials/svg?seed=شركتك&backgroundColor=0891b2"
-                      alt="Company Logo"
-                      className="h-16 w-16 rounded-md"
-                    />
-                    <Button variant="outline">تغيير الشعار</Button>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {settingsOptions.map(
+          (option) =>
+            hasPermission(option.permission) && (
+              <Card
+                key={option.path}
+                className="p-6 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => navigate(option.path)}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                    {option.icon}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-1">
+                      {option.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {option.description}
+                    </p>
                   </div>
                 </div>
-              </div>
-              <div className="flex justify-end">
-                <Button>حفظ التغييرات</Button>
-              </div>
-            </div>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="salary" className="space-y-6 mt-6">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">إعدادات الرواتب</h2>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>عدد أيام العمل في الشهر</Label>
-                  <Input
-                    defaultValue="30"
-                    className="text-right"
-                    type="number"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>عدد ساعات العمل في اليوم</Label>
-                  <Input
-                    defaultValue="8"
-                    className="text-right"
-                    type="number"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>معامل الأوفرتايم</Label>
-                  <Input
-                    defaultValue="1.5"
-                    className="text-right"
-                    type="number"
-                    step="0.1"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>الحد الأقصى لساعات الأوفرتايم شهرياً</Label>
-                  <Input
-                    defaultValue="40"
-                    className="text-right"
-                    type="number"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <Button>حفظ التغييرات</Button>
-              </div>
-            </div>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="backup" className="space-y-6 mt-6">
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={() => (window.location.href = "/settings/formulas")}
-            >
-              إدارة صيغ حساب الرواتب
-            </Button>
-            <h2 className="text-xl font-semibold">
-              النسخ الاحتياطي واستعادة البيانات
-            </h2>
-          </div>
-
-          <div className="mt-4">
-            <BackupRestore
-              onBackup={async () => {
-                // Mock data for backup
-                return {
-                  employees: [],
-                  salaries: [],
-                  settings: {},
-                  timestamp: new Date().toISOString(),
-                };
-              }}
-              onRestore={async (data) => {
-                console.log("Restoring data:", data);
-                return true;
-              }}
-            />
-          </div>
-        </TabsContent>
-      </Tabs>
+              </Card>
+            ),
+        )}
+      </div>
     </div>
   );
 }

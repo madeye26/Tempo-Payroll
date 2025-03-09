@@ -11,41 +11,83 @@ import { supabase } from "@/lib/supabase";
 const Home = () => {
   const { employees } = useEmployees();
 
-  // Mock data for dashboard
-  const activities = [
-    {
-      id: "1",
-      title: "تم إضافة راتب جديد",
-      description: "تم إضافة راتب شهر مايو لأحمد محمد",
-      timestamp: "منذ 2 ساعة",
-      type: "salary" as const,
-      status: "success" as const,
-    },
-    {
-      id: "2",
-      title: "طلب سلفة جديد",
-      description: "قدم فاطمة علي طلب سلفة بقيمة 1000 ج.م",
-      timestamp: "منذ 5 ساعات",
-      type: "advance" as const,
-      status: "pending" as const,
-    },
-    {
-      id: "3",
-      title: "طلب إجازة",
-      description: "قدم محمد علي طلب إجازة لمدة 3 أيام",
-      timestamp: "منذ يوم",
-      type: "attendance" as const,
-      status: "pending" as const,
-    },
-    {
-      id: "4",
-      title: "تم إضافة موظف جديد",
-      description: "تم إضافة خالد أحمد كمهندس برمجيات",
-      timestamp: "منذ 3 أيام",
-      type: "employee" as const,
-      status: "success" as const,
-    },
-  ];
+  // Get real activity logs from localStorage
+  const [activities, setActivities] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Get activity logs from localStorage
+    const storedLogs = localStorage.getItem("activity_logs");
+    if (storedLogs) {
+      try {
+        const parsedLogs = JSON.parse(storedLogs);
+        // Convert to the format needed for RecentActivities component
+        const formattedActivities = parsedLogs
+          .slice(0, 5) // Get only the 5 most recent activities
+          .map((log: any) => {
+            // Determine type based on log type
+            let activityType: "salary" | "advance" | "attendance" | "employee" =
+              "salary";
+            switch (log.type) {
+              case "salary":
+                activityType = "salary";
+                break;
+              case "advance":
+                activityType = "advance";
+                break;
+              case "attendance":
+                activityType = "attendance";
+                break;
+              case "employee":
+                activityType = "employee";
+                break;
+              default:
+                activityType = "salary";
+            }
+
+            // Determine status based on log action
+            let activityStatus: "success" | "pending" | "error" = "success";
+            if (log.action === "create" || log.action === "update") {
+              activityStatus = "success";
+            } else if (log.action === "delete") {
+              activityStatus = "error";
+            } else {
+              activityStatus = "pending";
+            }
+
+            // Calculate relative time
+            const logDate = new Date(log.created_at);
+            const now = new Date();
+            const diffMs = now.getTime() - logDate.getTime();
+            const diffMins = Math.floor(diffMs / (1000 * 60));
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+            let timestamp = "";
+            if (diffMins < 60) {
+              timestamp = `منذ ${diffMins} دقيقة`;
+            } else if (diffHours < 24) {
+              timestamp = `منذ ${diffHours} ساعة`;
+            } else {
+              timestamp = `منذ ${diffDays} يوم`;
+            }
+
+            return {
+              id: log.id,
+              title: log.description.split(" ").slice(0, 3).join(" "),
+              description: log.description,
+              timestamp,
+              type: activityType,
+              status: activityStatus,
+            };
+          });
+
+        setActivities(formattedActivities);
+      } catch (error) {
+        console.error("Error parsing activity logs:", error);
+        setActivities([]);
+      }
+    }
+  }, []);
 
   const [chartData, setChartData] = useState([
     { month: "يناير", totalSalaries: 25000, totalDeductions: 5000 },
@@ -315,20 +357,44 @@ const Home = () => {
             </h3>
             <ul className="space-y-3 text-right">
               <li className="pb-2 border-b">
-                <p className="font-medium">دفع رواتب شهر يونيو</p>
-                <p className="text-sm text-muted-foreground">25 يونيو 2024</p>
+                <p className="font-medium">دفع رواتب الشهر الحالي</p>
+                <p className="text-sm text-muted-foreground">
+                  {new Date(
+                    new Date().getFullYear(),
+                    new Date().getMonth() + 1,
+                    0,
+                  ).toLocaleDateString("ar-EG")}
+                </p>
               </li>
               <li className="pb-2 border-b">
-                <p className="font-medium">مراجعة طلبات الإجازات</p>
-                <p className="text-sm text-muted-foreground">20 يونيو 2024</p>
+                <p className="font-medium">مراجعة طلبات الإجازات المعلقة</p>
+                <p className="text-sm text-muted-foreground">
+                  {new Date(
+                    new Date().getFullYear(),
+                    new Date().getMonth(),
+                    new Date().getDate() + 3,
+                  ).toLocaleDateString("ar-EG")}
+                </p>
               </li>
               <li className="pb-2 border-b">
                 <p className="font-medium">تقييم أداء الموظفين</p>
-                <p className="text-sm text-muted-foreground">30 يونيو 2024</p>
+                <p className="text-sm text-muted-foreground">
+                  {new Date(
+                    new Date().getFullYear(),
+                    new Date().getMonth(),
+                    new Date().getDate() + 7,
+                  ).toLocaleDateString("ar-EG")}
+                </p>
               </li>
               <li>
                 <p className="font-medium">تحديث بيانات الموظفين</p>
-                <p className="text-sm text-muted-foreground">15 يونيو 2024</p>
+                <p className="text-sm text-muted-foreground">
+                  {new Date(
+                    new Date().getFullYear(),
+                    new Date().getMonth(),
+                    new Date().getDate() + 5,
+                  ).toLocaleDateString("ar-EG")}
+                </p>
               </li>
             </ul>
           </Card>

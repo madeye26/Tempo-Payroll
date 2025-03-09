@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -6,10 +6,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Printer } from "lucide-react";
 
 interface SalaryReport {
+  id: string;
+  employeeId: string;
   employeeName: string;
   baseSalary: number;
   incentives: number;
@@ -23,6 +26,8 @@ interface SalaryReport {
   netSalary: number;
   absences: number;
   penaltyDays: number;
+  month: string;
+  year: number;
 }
 
 interface PrintReportProps {
@@ -40,185 +45,278 @@ export function PrintReport({
   month,
   year,
 }: PrintReportProps) {
+  const printRef = useRef<HTMLDivElement>(null);
+
   const handlePrint = () => {
-    const printContent = document.getElementById("report-content");
-    const originalContents = document.body.innerHTML;
+    const printContent = printRef.current?.innerHTML;
 
     if (printContent) {
-      document.body.innerHTML = printContent.innerHTML;
-      window.print();
-      document.body.innerHTML = originalContents;
-      onOpenChange(false);
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.open();
+        printWindow.document.write(`
+          <html dir="rtl">
+            <head>
+              <title>تقرير الرواتب - ${month} ${year}</title>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  padding: 20px;
+                  direction: rtl;
+                  max-width: 1200px;
+                  margin: 0 auto;
+                }
+                .report {
+                  border: 1px solid #ccc;
+                  padding: 20px;
+                  width: 100%;
+                  box-sizing: border-box;
+                  margin: 0 auto;
+                }
+                .header {
+                  text-align: center;
+                  margin-bottom: 20px;
+                  border-bottom: 2px solid #333;
+                  padding-bottom: 10px;
+                }
+                .company-name {
+                  font-size: 24px;
+                  font-weight: bold;
+                  margin-bottom: 5px;
+                }
+                .report-title {
+                  font-size: 18px;
+                  margin-bottom: 5px;
+                }
+                table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  margin-bottom: 20px;
+                  font-size: 14px;
+                }
+                th, td {
+                  border: 1px solid #ddd;
+                  padding: 8px;
+                  text-align: right;
+                }
+                th {
+                  background-color: #f2f2f2;
+                  font-weight: bold;
+                }
+                .summary {
+                  display: flex;
+                  justify-content: space-between;
+                  margin-top: 20px;
+                  border-top: 2px solid #333;
+                  padding-top: 10px;
+                }
+                .summary-item {
+                  text-align: center;
+                  width: 25%;
+                }
+                .summary-label {
+                  font-weight: bold;
+                  margin-bottom: 5px;
+                }
+                .summary-value {
+                  font-size: 16px;
+                }
+                .signature-section {
+                  display: flex;
+                  justify-content: space-between;
+                  margin-top: 40px;
+                }
+                .signature-box {
+                  width: 40%;
+                }
+                .signature-line {
+                  border-top: 1px solid #333;
+                  margin-top: 40px;
+                  padding-top: 5px;
+                  text-align: center;
+                }
+                @media print {
+                  body {
+                    padding: 0;
+                    margin: 0;
+                  }
+                  .report {
+                    border: none;
+                    padding: 0;
+                  }
+                  .no-print {
+                    display: none;
+                  }
+                  table {
+                    page-break-inside: auto;
+                  }
+                  tr {
+                    page-break-inside: avoid;
+                    page-break-after: auto;
+                  }
+                }
+              </style>
+            </head>
+            <body>
+              ${printContent}
+              <div class="no-print" style="text-align: center; margin-top: 20px;">
+                <button onclick="window.print()" style="padding: 10px 20px; background: #0891b2; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                  طباعة
+                </button>
+              </div>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+      }
     }
   };
 
-  const totalBaseSalary = reports.reduce(
-    (sum, report) => sum + report.baseSalary,
+  // Get company name from system settings or use default
+  const systemSettings = JSON.parse(
+    localStorage.getItem("system_settings") || "{}",
+  );
+  const companyName = systemSettings.companyName || "شركتك";
+  const companyAddress = systemSettings.companyAddress || "القاهرة، مصر";
+
+  // Calculate totals
+  const totalSalaries = reports.reduce(
+    (sum, report) => sum + report.netSalary,
     0,
   );
   const totalIncentives = reports.reduce(
     (sum, report) => sum + report.incentives,
     0,
   );
-  const totalBonuses = reports.reduce((sum, report) => sum + report.bonuses, 0);
-  const totalOvertime = reports.reduce(
-    (sum, report) => sum + report.overtime,
-    0,
-  );
-  const totalAdditions = reports.reduce(
-    (sum, report) => sum + report.totalAdditions,
-    0,
-  );
   const totalDeductions = reports.reduce(
     (sum, report) => sum + report.totalDeductions,
     0,
   );
-  const totalNetSalary = reports.reduce(
-    (sum, report) => sum + report.netSalary,
-    0,
-  );
+  const totalEmployees = reports.length;
+
+  // Format date
+  const formattedDate = `${month} ${year}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl" dir="rtl">
+      <DialogContent
+        className="max-w-5xl overflow-y-auto max-h-[90vh]"
+        dir="rtl"
+      >
         <DialogHeader>
-          <DialogTitle className="text-center text-xl">
-            تقرير الرواتب الشهري
-          </DialogTitle>
+          <DialogTitle>تقرير الرواتب الشهري</DialogTitle>
+          <DialogDescription>
+            تقرير الرواتب لشهر {formattedDate}.
+          </DialogDescription>
         </DialogHeader>
 
-        <div id="report-content" className="p-4 border rounded-md">
-          <div className="text-center mb-4 border-b pb-2">
-            <h2 className="text-lg font-bold">شركتك</h2>
-            <p className="text-xs text-muted-foreground">القاهرة، مصر</p>
-            <p className="text-xs mt-1">
-              تقرير الرواتب: {month} {year}
-            </p>
+        <div ref={printRef} className="report bg-white p-6 border rounded-md">
+          <div className="header">
+            <div className="company-name">{companyName}</div>
+            <div className="report-title">تقرير الرواتب الشهري</div>
+            <div>{companyAddress}</div>
+            <div>الفترة: {formattedDate}</div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table style={{ maxWidth: "100%" }}>
               <thead>
-                <tr className="bg-muted/50">
-                  <th className="border p-2 text-right">الموظف</th>
-                  <th className="border p-2 text-right">الراتب الأساسي</th>
-                  <th className="border p-2 text-right">الحوافز</th>
-                  <th className="border p-2 text-right">المكافآت</th>
-                  <th className="border p-2 text-right">الأوفرتايم</th>
-                  <th className="border p-2 text-right">إجمالي الإضافات</th>
-                  <th className="border p-2 text-right">الغيابات (أيام)</th>
-                  <th className="border p-2 text-right">أيام الجزاءات</th>
-                  <th className="border p-2 text-right">الخصومات</th>
-                  <th className="border p-2 text-right">السلف</th>
-                  <th className="border p-2 text-right">المشتريات</th>
-                  <th className="border p-2 text-right">إجمالي الخصومات</th>
-                  <th className="border p-2 text-right">صافي الراتب</th>
+                <tr>
+                  <th>اسم الموظف</th>
+                  <th>الراتب الأساسي</th>
+                  <th>الحوافز</th>
+                  <th>المكافآت</th>
+                  <th>الأوفرتايم</th>
+                  <th>إجمالي الإضافات</th>
+                  <th>الغيابات</th>
+                  <th>الجزاءات</th>
+                  <th>الخصومات</th>
+                  <th>السلف</th>
+                  <th>المشتريات</th>
+                  <th>إجمالي الخصومات</th>
+                  <th>صافي الراتب</th>
                 </tr>
               </thead>
               <tbody>
-                {reports.map((report, index) => (
-                  <tr key={index} className="hover:bg-muted/20">
-                    <td className="border p-2 text-right">
-                      {report.employeeName}
-                    </td>
-                    <td className="border p-2 text-right">
-                      {report.baseSalary} ج.م
-                    </td>
-                    <td className="border p-2 text-right">
-                      {report.incentives} ج.م
-                    </td>
-                    <td className="border p-2 text-right">
-                      {report.bonuses} ج.م
-                    </td>
-                    <td className="border p-2 text-right">
-                      {report.overtime} ج.م
-                    </td>
-                    <td className="border p-2 text-right">
-                      {report.totalAdditions} ج.م
-                    </td>
-                    <td className="border p-2 text-right">
-                      {report.absences || 0}
-                    </td>
-                    <td className="border p-2 text-right">
-                      {report.penaltyDays || 0}
-                    </td>
-                    <td className="border p-2 text-right">
-                      {report.deductions} ج.م
-                    </td>
-                    <td className="border p-2 text-right">
-                      {report.advances} ج.م
-                    </td>
-                    <td className="border p-2 text-right">
-                      {report.purchases} ج.م
-                    </td>
-                    <td className="border p-2 text-right">
-                      {report.totalDeductions} ج.م
-                    </td>
-                    <td className="border p-2 text-right font-bold">
-                      {report.netSalary} ج.م
-                    </td>
+                {reports.map((report) => (
+                  <tr key={report.id}>
+                    <td>{report.employeeName}</td>
+                    <td>{report.baseSalary.toLocaleString()} ج.م</td>
+                    <td>{report.incentives.toLocaleString()} ج.م</td>
+                    <td>{report.bonuses.toLocaleString()} ج.م</td>
+                    <td>{report.overtime.toLocaleString()} ج.م</td>
+                    <td>{report.totalAdditions.toLocaleString()} ج.م</td>
+                    <td>{report.absences}</td>
+                    <td>{report.penaltyDays}</td>
+                    <td>{report.deductions.toLocaleString()} ج.م</td>
+                    <td>{report.advances.toLocaleString()} ج.م</td>
+                    <td>{report.purchases.toLocaleString()} ج.م</td>
+                    <td>{report.totalDeductions.toLocaleString()} ج.م</td>
+                    <td>{report.netSalary.toLocaleString()} ج.م</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr className="bg-muted/50 font-bold">
-                  <td className="border p-2 text-right">الإجمالي</td>
-                  <td className="border p-2 text-right">
-                    {totalBaseSalary} ج.م
+                <tr>
+                  <td colSpan={5}>
+                    <strong>الإجمالي</strong>
                   </td>
-                  <td className="border p-2 text-right">
-                    {totalIncentives} ج.م
+                  <td>
+                    <strong>
+                      {reports
+                        .reduce((sum, r) => sum + r.totalAdditions, 0)
+                        .toLocaleString()}{" "}
+                      ج.م
+                    </strong>
                   </td>
-                  <td className="border p-2 text-right">{totalBonuses} ج.م</td>
-                  <td className="border p-2 text-right">{totalOvertime} ج.م</td>
-                  <td className="border p-2 text-right">
-                    {totalAdditions} ج.م
+                  <td colSpan={5}></td>
+                  <td>
+                    <strong>{totalDeductions.toLocaleString()} ج.م</strong>
                   </td>
-                  <td className="border p-2 text-right">
-                    {reports.reduce(
-                      (sum, report) => sum + (report.absences || 0),
-                      0,
-                    )}
-                  </td>
-                  <td className="border p-2 text-right">
-                    {reports.reduce(
-                      (sum, report) => sum + (report.penaltyDays || 0),
-                      0,
-                    )}
-                  </td>
-                  <td className="border p-2 text-right">
-                    {reports.reduce(
-                      (sum, report) => sum + report.deductions,
-                      0,
-                    )}{" "}
-                    ج.م
-                  </td>
-                  <td className="border p-2 text-right">
-                    {reports.reduce((sum, report) => sum + report.advances, 0)}{" "}
-                    ج.م
-                  </td>
-                  <td className="border p-2 text-right">
-                    {reports.reduce((sum, report) => sum + report.purchases, 0)}{" "}
-                    ج.م
-                  </td>
-                  <td className="border p-2 text-right">
-                    {totalDeductions} ج.م
-                  </td>
-                  <td className="border p-2 text-right">
-                    {totalNetSalary} ج.م
+                  <td>
+                    <strong>{totalSalaries.toLocaleString()} ج.م</strong>
                   </td>
                 </tr>
               </tfoot>
             </table>
           </div>
 
-          <div className="mt-6 text-xs text-muted-foreground">
-            <p>تاريخ الإصدار: {new Date().toLocaleDateString("ar-EG")}</p>
-            <p>© {new Date().getFullYear()} شركتك</p>
+          <div className="summary">
+            <div className="summary-item">
+              <div className="summary-label">إجمالي الموظفين</div>
+              <div className="summary-value">{totalEmployees}</div>
+            </div>
+            <div className="summary-item">
+              <div className="summary-label">إجمالي الرواتب</div>
+              <div className="summary-value">
+                {totalSalaries.toLocaleString()} ج.م
+              </div>
+            </div>
+            <div className="summary-item">
+              <div className="summary-label">إجمالي الحوافز</div>
+              <div className="summary-value">
+                {totalIncentives.toLocaleString()} ج.م
+              </div>
+            </div>
+            <div className="summary-item">
+              <div className="summary-label">إجمالي الخصومات</div>
+              <div className="summary-value">
+                {totalDeductions.toLocaleString()} ج.م
+              </div>
+            </div>
+          </div>
+
+          <div className="signature-section">
+            <div className="signature-box">
+              <div className="signature-line">إعداد</div>
+            </div>
+            <div className="signature-box">
+              <div className="signature-line">اعتماد</div>
+            </div>
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             إغلاق
           </Button>

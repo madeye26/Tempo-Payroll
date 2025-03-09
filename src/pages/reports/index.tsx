@@ -235,12 +235,20 @@ export default function ReportsPage() {
     {
       accessorKey: "absences",
       header: "الغيابات (أيام)",
-      cell: ({ row }) => row.getValue("absences"),
+      cell: ({ row }) => {
+        // Get absences from attendance records
+        const absences = row.original.absences || 0;
+        return absences;
+      },
     },
     {
       accessorKey: "penaltyDays",
       header: "أيام الجزاءات",
-      cell: ({ row }) => row.getValue("penaltyDays"),
+      cell: ({ row }) => {
+        // Get penalty days from attendance records
+        const penaltyDays = row.original.penaltyDays || 0;
+        return penaltyDays;
+      },
     },
     {
       accessorKey: "deductions",
@@ -265,13 +273,30 @@ export default function ReportsPage() {
     {
       accessorKey: "netSalary",
       header: "صافي الراتب",
-      cell: ({ row }) => `${row.getValue("netSalary")} ج.م`,
+      cell: ({ row }) => {
+        const netSalary = row.getValue("netSalary") as number;
+        return `${netSalary} ج.م`;
+      },
+    },
+    {
+      id: "roundedNetSalary",
+      header: "صافي الراتب (مقرب)",
+      cell: ({ row }) => {
+        const netSalary = row.getValue("netSalary") as number;
+        // Round to nearest 5
+        const roundedSalary = Math.round(netSalary / 5) * 5;
+        return `${roundedSalary} ج.م`;
+      },
     },
   ];
 
   const handleGenerateReport = () => {
     // Get all saved salaries from localStorage
     const savedSalaries = JSON.parse(localStorage.getItem("salaries") || "[]");
+    // Get attendance records for absences and penalty days
+    const attendanceRecords = JSON.parse(
+      localStorage.getItem("attendance") || "[]",
+    );
 
     // Format the salaries for the report
     const formattedReports = savedSalaries.map((salary: any, index: number) => {
@@ -286,6 +311,35 @@ export default function ReportsPage() {
           break;
         }
       }
+
+      // Get absences and penalty days from attendance records
+      const employeeAttendance = attendanceRecords.filter(
+        (record: any) => record.employee_id === salary.employeeId,
+      );
+
+      // Count absences for this employee in this month/year
+      const absences = employeeAttendance.filter((record: any) => {
+        const recordDate = new Date(record.date);
+        const recordMonth = (recordDate.getMonth() + 1).toString();
+        const recordYear = recordDate.getFullYear().toString();
+        return (
+          recordMonth === monthNumber &&
+          recordYear === salary.year &&
+          record.status === "absent"
+        );
+      }).length;
+
+      // Count penalty days for this employee in this month/year
+      const penaltyDays = employeeAttendance.filter((record: any) => {
+        const recordDate = new Date(record.date);
+        const recordMonth = (recordDate.getMonth() + 1).toString();
+        const recordYear = recordDate.getFullYear().toString();
+        return (
+          recordMonth === monthNumber &&
+          recordYear === salary.year &&
+          record.status === "late"
+        );
+      }).length;
 
       return {
         id: salary.date
@@ -305,6 +359,8 @@ export default function ReportsPage() {
         deductions: salary.hourlyDeductions,
         advances: salary.advances,
         purchases: salary.purchases,
+        absences: absences || parseInt(salary.absences) || 0,
+        penaltyDays: penaltyDays || parseInt(salary.penaltyDays) || 0,
         totalDeductions:
           salary.advances +
           salary.purchases +
@@ -356,29 +412,27 @@ export default function ReportsPage() {
           </Button>
           <DataExport
             data={filteredReports}
-            filename={`salary-report-${selectedYear}-${selectedMonth}`}
+            filename={`salary-report-${selectedMonth}-${selectedYear}`}
+            disabled={filteredReports.length === 0}
           />
         </div>
       </div>
 
-      <Tabs
-        defaultValue="monthly"
-        className="w-full"
-        onValueChange={setReportType}
-      >
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="monthly">تقارير شهرية</TabsTrigger>
-          <TabsTrigger value="yearly">تقارير سنوية</TabsTrigger>
-        </TabsList>
+      <Card className="p-6">
+        <Tabs defaultValue="monthly" onValueChange={setReportType}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="monthly">تقارير شهرية</TabsTrigger>
+            <TabsTrigger value="yearly">تقارير سنوية</TabsTrigger>
+            <TabsTrigger value="analytics">تحليلات متقدمة</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="monthly" className="space-y-6 mt-6">
-          <Card className="p-6">
-            <div className="flex flex-col md:flex-row gap-4 items-end">
-              <div className="space-y-2 w-full md:w-1/3">
+          <TabsContent value="monthly" className="space-y-4">
+            <div className="flex flex-wrap gap-4 mb-4">
+              <div className="space-y-2">
                 <Label>الشهر</Label>
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="اختر الشهر" />
                   </SelectTrigger>
                   <SelectContent>
                     {months.map((month) => (
@@ -390,11 +444,11 @@ export default function ReportsPage() {
                 </Select>
               </div>
 
-              <div className="space-y-2 w-full md:w-1/3">
+              <div className="space-y-2">
                 <Label>السنة</Label>
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="اختر السنة" />
                   </SelectTrigger>
                   <SelectContent>
                     {years.map((year) => (
@@ -406,59 +460,60 @@ export default function ReportsPage() {
                 </Select>
               </div>
 
-              <Button
-                className="w-full md:w-auto"
-                onClick={handleGenerateReport}
-              >
-                إنشاء التقرير
-              </Button>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-6">ملخص التقرير الشهري</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <Card className="p-4 space-y-2 bg-blue-50 dark:bg-blue-900/20">
-                <p className="text-muted-foreground">إجمالي الرواتب</p>
-                <p className="text-2xl font-bold">{totalSalaries} ج.م</p>
-              </Card>
-              <Card className="p-4 space-y-2 bg-green-50 dark:bg-green-900/20">
-                <p className="text-muted-foreground">إجمالي الحوافز</p>
-                <p className="text-2xl font-bold">{totalIncentives} ج.م</p>
-              </Card>
-              <Card className="p-4 space-y-2 bg-yellow-50 dark:bg-yellow-900/20">
-                <p className="text-muted-foreground">إجمالي السلف</p>
-                <p className="text-2xl font-bold">{totalAdvances} ج.م</p>
-              </Card>
-              <Card className="p-4 space-y-2 bg-red-50 dark:bg-red-900/20">
-                <p className="text-muted-foreground">إجمالي الخصومات</p>
-                <p className="text-2xl font-bold">{totalDeductions} ج.م</p>
-              </Card>
+              <div className="flex items-end">
+                <Button onClick={handleGenerateReport}>إنشاء التقرير</Button>
+              </div>
             </div>
 
-            <h3 className="text-lg font-semibold mb-4">تفاصيل الرواتب</h3>
             {filteredReports.length > 0 ? (
-              <DataTable
-                columns={columns}
-                data={filteredReports}
-                searchKey="employeeName"
-              />
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <Card className="p-4 bg-muted/20">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      إجمالي الرواتب
+                    </h3>
+                    <p className="text-2xl font-bold">{totalSalaries} ج.م</p>
+                  </Card>
+                  <Card className="p-4 bg-muted/20">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      إجمالي الحوافز
+                    </h3>
+                    <p className="text-2xl font-bold">{totalIncentives} ج.م</p>
+                  </Card>
+                  <Card className="p-4 bg-muted/20">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      إجمالي السلف
+                    </h3>
+                    <p className="text-2xl font-bold">{totalAdvances} ج.م</p>
+                  </Card>
+                  <Card className="p-4 bg-muted/20">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      إجمالي الخصومات
+                    </h3>
+                    <p className="text-2xl font-bold">{totalDeductions} ج.م</p>
+                  </Card>
+                </div>
+
+                <DataTable
+                  columns={columns}
+                  data={filteredReports}
+                  searchKey="employeeName"
+                />
+              </>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                لا توجد بيانات للعرض. الرجاء إنشاء التقرير أولاً.
+                لا توجد بيانات للعرض. قم بإنشاء التقرير أولاً.
               </div>
             )}
-          </Card>
-        </TabsContent>
+          </TabsContent>
 
-        <TabsContent value="yearly" className="space-y-6 mt-6">
-          <Card className="p-6">
-            <div className="flex flex-col md:flex-row gap-4 items-end">
-              <div className="space-y-2 w-full md:w-1/3">
+          <TabsContent value="yearly" className="space-y-4">
+            <div className="flex flex-wrap gap-4 mb-4">
+              <div className="space-y-2">
                 <Label>السنة</Label>
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="اختر السنة" />
                   </SelectTrigger>
                   <SelectContent>
                     {years.map((year) => (
@@ -470,128 +525,68 @@ export default function ReportsPage() {
                 </Select>
               </div>
 
-              <Button
-                className="w-full md:w-auto"
-                onClick={handleGenerateReport}
-              >
-                إنشاء التقرير
-              </Button>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-6">ملخص التقرير السنوي</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <Card className="p-4 space-y-2">
-                <p className="text-muted-foreground">إجمالي الرواتب السنوية</p>
-                <p className="text-2xl font-bold">{totalSalaries * 12} ج.م</p>
-              </Card>
-              <Card className="p-4 space-y-2">
-                <p className="text-muted-foreground">متوسط الرواتب الشهرية</p>
-                <p className="text-2xl font-bold">{totalSalaries} ج.م</p>
-              </Card>
-              <Card className="p-4 space-y-2">
-                <p className="text-muted-foreground">عدد الموظفين</p>
-                <p className="text-2xl font-bold">{filteredReports.length}</p>
-              </Card>
-              <Card className="p-4 space-y-2">
-                <p className="text-muted-foreground">إجمالي الخصومات السنوية</p>
-                <p className="text-2xl font-bold">{totalDeductions * 12} ج.م</p>
-              </Card>
+              <div className="flex items-end">
+                <Button onClick={handleGenerateReport}>إنشاء التقرير</Button>
+              </div>
             </div>
 
-            <h3 className="text-lg font-semibold mb-4">
-              تفاصيل الرواتب السنوية
-            </h3>
             {filteredReports.length > 0 ? (
-              <DataTable
-                columns={columns}
-                data={filteredReports}
-                searchKey="employeeName"
-              />
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <Card className="p-4 bg-muted/20">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      إجمالي الرواتب
+                    </h3>
+                    <p className="text-2xl font-bold">{totalSalaries} ج.م</p>
+                  </Card>
+                  <Card className="p-4 bg-muted/20">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      إجمالي الحوافز
+                    </h3>
+                    <p className="text-2xl font-bold">{totalIncentives} ج.م</p>
+                  </Card>
+                  <Card className="p-4 bg-muted/20">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      إجمالي السلف
+                    </h3>
+                    <p className="text-2xl font-bold">{totalAdvances} ج.م</p>
+                  </Card>
+                  <Card className="p-4 bg-muted/20">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      إجمالي الخصومات
+                    </h3>
+                    <p className="text-2xl font-bold">{totalDeductions} ج.م</p>
+                  </Card>
+                </div>
+
+                <DataTable
+                  columns={columns}
+                  data={filteredReports}
+                  searchKey="employeeName"
+                />
+              </>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                لا توجد بيانات للعرض. الرجاء إنشاء التقرير أولاً.
+                لا توجد بيانات للعرض. قم بإنشاء التقرير أولاً.
               </div>
             )}
+          </TabsContent>
 
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-4">
-                الموظفين الذين لديهم سلف غير مدفوعة
-              </h3>
-              <p className="text-muted-foreground">
-                لا يوجد موظفين لديهم سلف غير مدفوعة
-              </p>
-            </div>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="analytics">
+            <AdvancedAnalytics reports={salaryReports} />
+          </TabsContent>
+        </Tabs>
+      </Card>
 
-      <AdvancedAnalytics
-        data={[
-          {
-            month: "يناير",
-            year: 2024,
-            totalSalaries: 25000,
-            totalDeductions: 5000,
-            totalAdvances: 2000,
-            employeeCount: 10,
-            averageSalary: 2500,
-          },
-          {
-            month: "فبراير",
-            year: 2024,
-            totalSalaries: 27000,
-            totalDeductions: 5500,
-            totalAdvances: 2200,
-            employeeCount: 10,
-            averageSalary: 2700,
-          },
-          {
-            month: "مارس",
-            year: 2024,
-            totalSalaries: 26000,
-            totalDeductions: 4800,
-            totalAdvances: 1800,
-            employeeCount: 10,
-            averageSalary: 2600,
-          },
-          {
-            month: "أبريل",
-            year: 2024,
-            totalSalaries: 28000,
-            totalDeductions: 6000,
-            totalAdvances: 2500,
-            employeeCount: 11,
-            averageSalary: 2545,
-          },
-          {
-            month: "مايو",
-            year: 2024,
-            totalSalaries: 30000,
-            totalDeductions: 6200,
-            totalAdvances: 2700,
-            employeeCount: 12,
-            averageSalary: 2500,
-          },
-          {
-            month: "يونيو",
-            year: 2024,
-            totalSalaries: 29000,
-            totalDeductions: 5800,
-            totalAdvances: 2300,
-            employeeCount: 12,
-            averageSalary: 2417,
-          },
-        ]}
-      />
-
+      {/* Report Template Builder Dialog */}
       <ReportTemplateBuilder
         open={templateBuilderOpen}
         onOpenChange={setTemplateBuilderOpen}
         onSave={handleSaveTemplate}
+        savedTemplates={savedTemplates}
       />
 
+      {/* Print Report Dialog */}
       <PrintReport
         open={printReportOpen}
         onOpenChange={setPrintReportOpen}

@@ -288,6 +288,67 @@ export function AttendanceLog() {
       cell: ({ row }) => row.getValue("check_out") || "--",
     },
     {
+      id: "delay_hours",
+      header: "ساعات التأخير",
+      cell: ({ row }) => {
+        const checkIn = row.getValue("check_in") as string | null;
+        if (!checkIn) return "--";
+
+        // Standard work start time (8:00 AM)
+        const standardStartTime = new Date();
+        standardStartTime.setHours(8, 0, 0, 0);
+
+        // Parse check-in time
+        const [hours, minutes] = checkIn.split(":").map(Number);
+        const actualCheckIn = new Date();
+        actualCheckIn.setHours(hours, minutes, 0, 0);
+
+        // Calculate delay in minutes
+        if (actualCheckIn <= standardStartTime) return "0";
+
+        const delayMinutes = Math.floor(
+          (actualCheckIn.getTime() - standardStartTime.getTime()) / (1000 * 60),
+        );
+        const delayHours = (delayMinutes / 60).toFixed(2);
+        return delayHours;
+      },
+    },
+    {
+      id: "overtime_hours",
+      header: "ساعات إضافية",
+      cell: ({ row }) => {
+        const checkIn = row.getValue("check_in") as string | null;
+        const checkOut = row.getValue("check_out") as string | null;
+
+        if (!checkIn || !checkOut) return "--";
+
+        // Standard work hours (11 hours)
+        const standardWorkHours = 11;
+
+        // Parse check-in and check-out times
+        const [inHours, inMinutes] = checkIn.split(":").map(Number);
+        const [outHours, outMinutes] = checkOut.split(":").map(Number);
+
+        const checkInTime = new Date();
+        checkInTime.setHours(inHours, inMinutes, 0, 0);
+
+        const checkOutTime = new Date();
+        checkOutTime.setHours(outHours, outMinutes, 0, 0);
+
+        // Calculate total work hours
+        const totalMinutes = Math.floor(
+          (checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60),
+        );
+        const totalHours = totalMinutes / 60;
+
+        // Calculate overtime
+        if (totalHours <= standardWorkHours) return "0";
+
+        const overtimeHours = (totalHours - standardWorkHours).toFixed(2);
+        return overtimeHours;
+      },
+    },
+    {
       accessorKey: "status",
       header: "الحالة",
       cell: ({ row }) => {

@@ -9,6 +9,44 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          description: string
+          details: Json | null
+          id: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          description: string
+          details?: Json | null
+          id?: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          description?: string
+          details?: Json | null
+          id?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       advances: {
         Row: {
           actual_repayment_date: string | null
@@ -96,6 +134,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string
+          table_name: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id: string
+          table_name: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string
+          table_name?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       employees: {
         Row: {
@@ -218,6 +289,80 @@ export type Database = {
           },
         ]
       }
+      report_metadata: {
+        Row: {
+          created_at: string | null
+          department: string | null
+          generated_by: string
+          id: string
+          month: string | null
+          period_type: string
+          report_data: Json
+          template_id: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          department?: string | null
+          generated_by: string
+          id?: string
+          month?: string | null
+          period_type: string
+          report_data: Json
+          template_id?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          department?: string | null
+          generated_by?: string
+          id?: string
+          month?: string | null
+          period_type?: string
+          report_data?: Json
+          template_id?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_metadata_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_templates: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          format: Json
+          id: string
+          is_default: boolean | null
+          name: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          format: Json
+          id?: string
+          is_default?: boolean | null
+          name: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          format?: Json
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
       salary_components: {
         Row: {
           absences: number | null
@@ -304,6 +449,268 @@ export type Database = {
           is_default?: boolean | null
           name?: string
           variables?: Json
+        }
+        Relationships: []
+      }
+      salary_statistics: {
+        Row: {
+          average_salary: number
+          created_at: string | null
+          department: string | null
+          id: string
+          month: string | null
+          period_type: string
+          total_absences: number
+          total_advances: number
+          total_base_salary: number
+          total_bonuses: number
+          total_deductions: number
+          total_employees: number
+          total_incentives: number
+          total_net_salary: number
+          total_overtime: number
+          total_penalty_days: number
+          total_purchases: number
+          year: number
+        }
+        Insert: {
+          average_salary: number
+          created_at?: string | null
+          department?: string | null
+          id?: string
+          month?: string | null
+          period_type: string
+          total_absences: number
+          total_advances: number
+          total_base_salary: number
+          total_bonuses: number
+          total_deductions: number
+          total_employees: number
+          total_incentives: number
+          total_net_salary: number
+          total_overtime: number
+          total_penalty_days: number
+          total_purchases: number
+          year: number
+        }
+        Update: {
+          average_salary?: number
+          created_at?: string | null
+          department?: string | null
+          id?: string
+          month?: string | null
+          period_type?: string
+          total_absences?: number
+          total_advances?: number
+          total_base_salary?: number
+          total_bonuses?: number
+          total_deductions?: number
+          total_employees?: number
+          total_incentives?: number
+          total_net_salary?: number
+          total_overtime?: number
+          total_penalty_days?: number
+          total_purchases?: number
+          year?: number
+        }
+        Relationships: []
+      }
+      system_activities: {
+        Row: {
+          action: string
+          created_at: string | null
+          description: string | null
+          employee_id: string | null
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          related_id: string | null
+          related_table: string | null
+          status: string | null
+          timestamp: string | null
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          action?: string
+          created_at?: string | null
+          description?: string | null
+          employee_id?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          related_id?: string | null
+          related_table?: string | null
+          status?: string | null
+          timestamp?: string | null
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          description?: string | null
+          employee_id?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          related_id?: string | null
+          related_table?: string | null
+          status?: string | null
+          timestamp?: string | null
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_activities_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string
+          id: string
+          priority: string | null
+          status: string | null
+          title: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date: string
+          id?: string
+          priority?: string | null
+          status?: string | null
+          title: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string
+          id?: string
+          priority?: string | null
+          status?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          employee_id: string | null
+          full_name: string | null
+          id: string
+          is_active: boolean | null
+          role_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          employee_id?: string | null
+          full_name?: string | null
+          id: string
+          is_active?: boolean | null
+          role_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          employee_id?: string | null
+          full_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          role_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_profiles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          permissions: Json
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          permissions?: Json
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          permissions?: Json
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id: string
+          name: string
+          role: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          role?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
