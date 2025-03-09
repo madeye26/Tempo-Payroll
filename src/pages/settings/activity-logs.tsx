@@ -27,15 +27,25 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { getActivityLogs, ActivityLog } from "@/lib/activity-logger";
+import { logActivity } from "@/lib/activity-logger";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/lib/hooks/use-auth";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { PageHeader } from "@/components/ui/page-header";
 import { DataExport } from "@/components/ui/data-export";
 
+interface ActivityLog {
+  id: string;
+  user_id: string;
+  type: string;
+  action: string;
+  description: string;
+  details?: any;
+  created_at: string;
+  user_name?: string;
+  user_email?: string;
+}
+
 export default function ActivityLogsPage() {
-  const { hasPermission } = useAuth();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [totalLogs, setTotalLogs] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -53,33 +63,42 @@ export default function ActivityLogsPage() {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      // Get logs directly from localStorage for reliability
+      // Get logs from localStorage
       const allLogs = JSON.parse(localStorage.getItem("activity_logs") || "[]");
-      console.log("All activity logs from localStorage:", allLogs);
 
       // Apply filters
       let filteredLogs = allLogs;
       if (userFilter) {
-        filteredLogs = filteredLogs.filter((log) => log.user_id === userFilter);
+        filteredLogs = filteredLogs.filter(
+          (log: any) => log.user_id === userFilter,
+        );
       }
       if (typeFilter) {
-        filteredLogs = filteredLogs.filter((log) => log.type === typeFilter);
+        filteredLogs = filteredLogs.filter(
+          (log: any) => log.type === typeFilter,
+        );
       }
       if (actionFilter) {
         filteredLogs = filteredLogs.filter(
-          (log) => log.action === actionFilter,
+          (log: any) => log.action === actionFilter,
         );
       }
       if (startDate) {
         filteredLogs = filteredLogs.filter(
-          (log) => new Date(log.created_at) >= startDate,
+          (log: any) => new Date(log.created_at) >= startDate,
         );
       }
       if (endDate) {
         filteredLogs = filteredLogs.filter(
-          (log) => new Date(log.created_at) <= endDate,
+          (log: any) => new Date(log.created_at) <= endDate,
         );
       }
+
+      // Sort by created_at in descending order
+      filteredLogs.sort(
+        (a: any, b: any) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
 
       // Apply pagination
       const total = filteredLogs.length;
@@ -89,7 +108,7 @@ export default function ActivityLogsPage() {
 
       // Get user information
       const users = JSON.parse(localStorage.getItem("users") || "[]");
-      const logsWithUserInfo = paginatedLogs.map((log) => {
+      const logsWithUserInfo = paginatedLogs.map((log: any) => {
         const user = users.find((u: any) => u.id === log.user_id);
         return {
           ...log,
@@ -100,7 +119,6 @@ export default function ActivityLogsPage() {
 
       setLogs(logsWithUserInfo);
       setTotalLogs(total);
-      console.log("Filtered and paginated logs:", logsWithUserInfo);
     } catch (error) {
       console.error("Error fetching activity logs:", error);
     } finally {
@@ -118,24 +136,8 @@ export default function ActivityLogsPage() {
 
     window.addEventListener("activity-logged", handleActivityLogged);
 
-    // Set up realtime subscription if supabase is available
-    let subscription: any;
-    if (supabase) {
-      subscription = supabase
-        .channel("activity_logs_changes")
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "activity_logs" },
-          () => fetchLogs(),
-        )
-        .subscribe();
-    }
-
     return () => {
       window.removeEventListener("activity-logged", handleActivityLogged);
-      if (subscription) {
-        subscription.unsubscribe();
-      }
     };
   }, [page, limit, userFilter, typeFilter, actionFilter, startDate, endDate]);
 
@@ -266,16 +268,6 @@ export default function ActivityLogsPage() {
       cell: ({ row }) => row.getValue("description"),
     },
   ];
-
-  if (!hasPermission("manage_settings")) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center p-4 text-center">
-        <h1 className="text-2xl font-bold text-red-600 mb-2">غير مصرح</h1>
-        <p className="mb-4">ليس لديك صلاحية للوصول إلى هذه الصفحة</p>
-        <Button onClick={() => window.history.back()}>العودة</Button>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6" dir="rtl">

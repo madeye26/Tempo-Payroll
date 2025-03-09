@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DataTable } from "@/components/salary-calculator/data-table";
+import { DataTableResponsive } from "@/components/ui/data-table-responsive";
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit, Trash2, UserPlus, Search } from "lucide-react";
 import {
@@ -494,7 +494,12 @@ export default function UsersPage() {
             <span className="mr-2">جاري التحميل...</span>
           </div>
         ) : (
-          <DataTable columns={columns} data={users} searchKey="name" />
+          <DataTableResponsive
+            columns={columns}
+            data={users}
+            searchKey="name"
+            searchPlaceholder="بحث عن مستخدم..."
+          />
         )}
       </Card>
 

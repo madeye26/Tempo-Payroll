@@ -1,5 +1,6 @@
 import React from "react";
-import { Bell, User, LogOut, Settings, Search, FileText } from "lucide-react";
+import { User, LogOut, Settings, Search, FileText } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +11,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useNavigate } from "react-router-dom";
@@ -60,7 +60,7 @@ export function Header() {
       <div className="flex items-center justify-between" dir="rtl">
         <div className="flex items-center gap-2">
           <img
-            src="https://api.dicebear.com/7.x/initials/svg?seed=شركتك&backgroundColor=0891b2"
+            src="https://api.dicebear.com/7.x/initials/svg?seed=B&backgroundColor=0891b2"
             alt="Logo"
             className="h-10 w-10 rounded-lg"
           />

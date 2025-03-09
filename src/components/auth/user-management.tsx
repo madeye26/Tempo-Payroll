@@ -512,9 +512,19 @@ export function UserManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">إدارة المستخدمين</h2>
-        <Button onClick={handleAddUser}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold bg-gradient-to-l from-primary to-primary/70 bg-clip-text text-transparent inline-block mb-2">
+            إدارة المستخدمين
+          </h2>
+          <p className="text-muted-foreground">
+            إضافة وتعديل وحذف المستخدمين وإدارة الصلاحيات
+          </p>
+        </div>
+        <Button
+          onClick={handleAddUser}
+          className="shadow-sm hover:shadow-md transition-all duration-300"
+        >
           <UserPlus className="ml-2 h-4 w-4" />
           إضافة مستخدم جديد
         </Button>

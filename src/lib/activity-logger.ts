@@ -55,6 +55,14 @@ export const logActivity = async (
       created_at: timestamp,
     };
 
+    console.log("Logging activity:", {
+      type,
+      action,
+      description,
+      userId,
+      details,
+    });
+
     // Always log to localStorage first for reliability
     const existingLogs = JSON.parse(
       localStorage.getItem("activity_logs") || "[]",
@@ -66,7 +74,30 @@ export const logActivity = async (
     existingLogs.unshift(newLog); // Add to beginning of array
     localStorage.setItem("activity_logs", JSON.stringify(existingLogs));
     console.log("Activity logged to localStorage:", newLog);
-    console.log("Current activity logs:", existingLogs);
+
+    // Also try to log to Supabase if available
+    if (supabase) {
+      try {
+        supabase
+          .from("activity_logs")
+          .insert([
+            {
+              user_id: userId,
+              type,
+              action,
+              description,
+              details: details || null,
+              created_at: timestamp,
+            },
+          ])
+          .then(({ error }) => {
+            if (error) console.error("Error logging to Supabase:", error);
+            else console.log("Activity logged to Supabase");
+          });
+      } catch (error) {
+        console.error("Error logging to Supabase:", error);
+      }
+    }
 
     // Force update any components that might be listening for activity logs
     const event = new CustomEvent("activity-logged", { detail: activityData });

@@ -40,7 +40,7 @@ const SidebarItem = ({ icon, label, href, active }: SidebarItemProps) => {
               className={cn(
                 "w-full justify-start gap-3 text-right my-1 transition-all duration-200",
                 active
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                   : "hover:bg-muted",
               )}
             >
@@ -131,7 +131,7 @@ export function Sidebar() {
       <div className="space-y-4">
         <div className="mb-8 px-4 flex items-center justify-center">
           <img
-            src="https://api.dicebear.com/7.x/initials/svg?seed=شركتك&backgroundColor=0891b2"
+            src="https://api.dicebear.com/7.x/initials/svg?seed=B&backgroundColor=0891b2"
             alt="Logo"
             className="h-12 w-12 rounded-xl shadow-md"
           />
@@ -172,7 +172,7 @@ export function Sidebar() {
     <>
       {/* Desktop Sidebar */}
       <div
-        className="h-full border-l bg-card/80 backdrop-blur-sm p-4 shadow-sm hidden md:block"
+        className="h-full border-l bg-card/90 backdrop-blur-sm p-4 shadow-sm hidden md:block transition-all duration-200"
         dir="rtl"
       >
         <SidebarContent />

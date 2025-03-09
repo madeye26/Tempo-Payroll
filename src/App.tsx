@@ -21,11 +21,16 @@ const FormulasPage = lazy(() => import("./pages/settings/formulas"));
 const UsersPage = lazy(() => import("./pages/settings/users"));
 const ActivityLogsPage = lazy(() => import("./pages/settings/activity-logs"));
 const BackupPage = lazy(() => import("./pages/settings/backup"));
+const SystemSettingsPage = lazy(() => import("./pages/settings/system"));
 const TestConnectionPage = lazy(() => import("./pages/test-connection"));
 
 function App() {
-  // Initialize localStorage with default data if empty
+  // Initialize localStorage with default data if empty and sync activity logs
   useEffect(() => {
+    // Import and run the activity log sync
+    import("./lib/sync-activity-logs").then(({ fetchAndMergeActivityLogs }) => {
+      fetchAndMergeActivityLogs();
+    });
     // Initialize employees
     if (!localStorage.getItem("employees")) {
       localStorage.setItem(
@@ -308,6 +313,14 @@ function App() {
                 element={
                   <ProtectedRoute requiredPermission="manage_settings">
                     <BackupPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="settings/system"
+                element={
+                  <ProtectedRoute requiredPermission="manage_settings">
+                    <SystemSettingsPage />
                   </ProtectedRoute>
                 }
               />

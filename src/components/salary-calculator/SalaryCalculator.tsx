@@ -7,6 +7,7 @@ import { useLocalStorage } from "@/lib/hooks/use-local-storage";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
+import { logActivity } from "@/lib/activity-logger";
 
 interface Employee {
   id: string;
@@ -76,8 +77,7 @@ const SalaryCalculator = () => {
     new Date().getFullYear().toString(),
   );
   const { toast } = useToast();
-  const { calculateTotals, saveSalaryCalculation, loading } =
-    useSalaryCalculation(selectedEmployee);
+  const [loading, setLoading] = useState(false);
 
   // Load saved employees from localStorage
   const [savedEmployees, setSavedEmployees] = useLocalStorage(
@@ -92,6 +92,48 @@ const SalaryCalculator = () => {
     }
   }, [savedEmployees]);
 
+  // Calculate totals based on monthly variables
+  const calculateTotals = () => {
+    if (!selectedEmployee) {
+      return {
+        totalSalary: 0,
+        totalDeductions: 0,
+        netSalary: 0,
+      };
+    }
+
+    // Parse all values to numbers
+    const baseSalary = selectedEmployee.basicSalary || 0;
+    const incentives = parseFloat(monthlyVariables.incentives) || 0;
+    const bonuses = parseFloat(monthlyVariables.bonuses) || 0;
+    const absences = parseFloat(monthlyVariables.absences) || 0;
+    const penalties = parseFloat(monthlyVariables.penalties) || 0;
+    const advances = parseFloat(monthlyVariables.advances) || 0;
+    const purchases = parseFloat(monthlyVariables.purchases) || 0;
+
+    // Calculate daily rate (assuming 30 days per month)
+    const dailyRate = baseSalary / 30;
+
+    // Calculate total salary
+    const totalSalary = baseSalary + incentives + bonuses;
+
+    // Calculate total deductions
+    const absenceDeductions = absences * dailyRate;
+    const totalDeductions =
+      absenceDeductions + penalties + advances + purchases;
+
+    // Calculate net salary
+    const netSalary = totalSalary - totalDeductions;
+
+    return {
+      totalSalary,
+      totalDeductions,
+      netSalary,
+    };
+  };
+
+  const { totalSalary, totalDeductions, netSalary } = calculateTotals();
+
   const handleSave = async () => {
     if (!selectedEmployee) {
       toast({
@@ -102,12 +144,77 @@ const SalaryCalculator = () => {
       return;
     }
 
+    setLoading(true);
     try {
-      await saveSalaryCalculation(
-        monthlyVariables,
-        selectedMonth,
-        selectedYear,
+      const employeeId = selectedEmployee.id;
+      const employeeName = selectedEmployee.name;
+      const salaryId = `${employeeId}-${selectedMonth}-${selectedYear}`;
+
+      // Prepare salary data
+      const salaryData = {
+        id: salaryId,
+        employeeId,
+        employeeName,
+        baseSalary: selectedEmployee.basicSalary || 0,
+        incentives: parseFloat(monthlyVariables.incentives) || 0,
+        bonuses: parseFloat(monthlyVariables.bonuses) || 0,
+        absences: parseFloat(monthlyVariables.absences) || 0,
+        penalties: parseFloat(monthlyVariables.penalties) || 0,
+        advances: parseFloat(monthlyVariables.advances) || 0,
+        purchases: parseFloat(monthlyVariables.purchases) || 0,
+        totalSalary,
+        totalDeductions,
+        netSalary,
+        month: selectedMonth,
+        year: selectedYear,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Save to localStorage
+      const savedSalaries = JSON.parse(
+        localStorage.getItem("salaries") || "[]",
       );
+      const existingSalaryIndex = savedSalaries.findIndex(
+        (s: any) => s.id === salaryId,
+      );
+
+      // Get current user from localStorage for activity logging
+      const currentUser = JSON.parse(
+        localStorage.getItem("auth_user") || "null",
+      );
+
+      if (existingSalaryIndex >= 0) {
+        // Update existing salary
+        savedSalaries[existingSalaryIndex] = salaryData;
+
+        // Log activity for salary update
+        if (currentUser) {
+          logActivity(
+            "salary",
+            "update",
+            `تم تحديث راتب الموظف ${employeeName} لشهر ${selectedMonth}/${selectedYear}`,
+            currentUser.id,
+            { employeeId, salaryId },
+          );
+        }
+      } else {
+        // Add new salary
+        savedSalaries.push(salaryData);
+
+        // Log activity for new salary
+        if (currentUser) {
+          logActivity(
+            "salary",
+            "create",
+            `تم إضافة راتب جديد للموظف ${employeeName} لشهر ${selectedMonth}/${selectedYear}`,
+            currentUser.id,
+            { employeeId, salaryId },
+          );
+        }
+      }
+
+      localStorage.setItem("salaries", JSON.stringify(savedSalaries));
+
       toast({
         title: "تم الحفظ بنجاح",
         description: "تم حفظ بيانات الراتب بنجاح",
@@ -119,11 +226,10 @@ const SalaryCalculator = () => {
         description: `حدث خطأ أثناء حفظ الراتب: ${error instanceof Error ? error.message : "خطأ غير معروف"}`,
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
-
-  const { totalSalary, totalDeductions, netSalary } =
-    calculateTotals(monthlyVariables);
 
   return (
     <div className="flex flex-col space-y-8 p-6 min-h-screen" dir="rtl">

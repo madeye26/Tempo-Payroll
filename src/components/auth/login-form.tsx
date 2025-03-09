@@ -65,15 +65,15 @@ export function LoginForm() {
 
   return (
     <div
-      className="flex justify-center items-center min-h-screen bg-muted/20"
+      className="flex justify-center items-center min-h-screen bg-gradient-to-b from-primary/5 to-muted/20"
       dir="rtl"
     >
-      <Card className="w-full max-w-md p-8 shadow-lg">
-        <div className="text-center mb-8">
+      <Card className="w-full max-w-md p-8 shadow-lg border-t-4 border-t-primary animate-fadeIn">
+        <div className="text-center mb-8 animate-fadeIn">
           <img
-            src="https://api.dicebear.com/7.x/initials/svg?seed=شركتك&backgroundColor=0891b2"
+            src="https://api.dicebear.com/7.x/initials/svg?seed=B&backgroundColor=0891b2"
             alt="Logo"
-            className="h-16 w-16 mx-auto mb-4 rounded-xl shadow-md"
+            className="h-20 w-20 mx-auto mb-4 rounded-xl shadow-md transition-transform hover:scale-105 duration-300"
           />
           <h1 className="text-2xl font-bold bg-gradient-to-l from-primary to-primary/70 bg-clip-text text-transparent">
             نظام إدارة الرواتب
@@ -120,7 +120,11 @@ export function LoginForm() {
             </div>
           )}
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button
+            type="submit"
+            className="w-full transition-all duration-300 hover:shadow-md"
+            disabled={isLoading}
+          >
             {isLoading ? (
               <>
                 <LoadingSpinner size="sm" className="ml-2" />
@@ -131,12 +135,6 @@ export function LoginForm() {
             )}
           </Button>
         </form>
-
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>بيانات الدخول الافتراضية:</p>
-          <p>البريد الإلكتروني: admin@example.com</p>
-          <p>كلمة المرور: password123</p>
-        </div>
       </Card>
     </div>
   );
