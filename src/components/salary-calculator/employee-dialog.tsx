@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,6 +16,9 @@ import * as z from "zod";
 import { supabase } from "@/lib/supabase";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ErrorMessage } from "@/components/ui/error-message";
+import { useToast } from "@/components/ui/use-toast";
+import { logActivity } from "@/lib/activity-logger";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 const employeeSchema = z.object({
   name: z.string().min(3, "الاسم مطلوب"),
@@ -42,6 +45,9 @@ export function EmployeeDialog({
   onSuccess,
 }: EmployeeDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  const { user: currentUser } = useAuth();
+
   const form = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
     defaultValues: {
@@ -54,66 +60,182 @@ export function EmployeeDialog({
     },
   });
 
+  // Update form values when employee prop changes or dialog opens
+  useEffect(() => {
+    if (employee && open) {
+      console.log("Setting form values for employee:", employee);
+      form.reset({
+        name: employee.name || "",
+        monthly_incentives: employee.monthly_incentives?.toString() || "0",
+        position: employee.position || "",
+        department: employee.department || "",
+        base_salary: employee.base_salary?.toString() || "",
+        join_date: employee.join_date || new Date().toISOString().split("T")[0],
+      });
+    } else if (!employee && open) {
+      // Reset form when adding a new employee
+      form.reset({
+        name: "",
+        monthly_incentives: "0",
+        position: "",
+        department: "",
+        base_salary: "",
+        join_date: new Date().toISOString().split("T")[0],
+      });
+    }
+  }, [employee, form, open]);
+
   const onSubmit = async (data: EmployeeFormData) => {
     setIsSubmitting(true);
     try {
       console.log("Attempting to save employee data:", data);
       console.log("Supabase client available:", !!supabase);
 
+      // Prepare the employee data
+      const employeeData = {
+        name: data.name,
+        monthly_incentives: parseFloat(data.monthly_incentives),
+        position: data.position,
+        department: data.department,
+        base_salary: parseFloat(data.base_salary),
+        join_date: data.join_date,
+        status: "active",
+      };
+
+      let savedEmployee;
+
       if (supabase) {
-        if (employee?.id) {
-          console.log("Updating existing employee with ID:", employee.id);
-          const { data: result, error } = await supabase
-            .from("employees")
-            .update(data)
-            .eq("id", employee.id)
-            .select();
+        try {
+          if (employee?.id) {
+            console.log("Updating existing employee with ID:", employee.id);
+            const { data: result, error } = await supabase
+              .from("employees")
+              .update(employeeData)
+              .eq("id", employee.id)
+              .select();
 
-          if (error) {
-            console.error("Error updating employee:", error);
-            throw error;
+            if (error) {
+              console.error("Error updating employee:", error);
+              throw error;
+            }
+
+            savedEmployee = result?.[0] || null;
+            console.log("Employee updated successfully:", result);
+
+            // Log activity
+            if (currentUser) {
+              logActivity(
+                "employee",
+                "update",
+                `تم تحديث بيانات الموظف ${data.name}`,
+                currentUser.id,
+                { employeeId: employee.id },
+              );
+            }
+
+            toast({
+              title: "تم التحديث بنجاح",
+              description: "تم تحديث بيانات الموظف بنجاح",
+            });
+          } else {
+            console.log("Inserting new employee");
+            const { data: result, error } = await supabase
+              .from("employees")
+              .insert([employeeData])
+              .select();
+
+            if (error) {
+              console.error("Error inserting employee:", error);
+              throw error;
+            }
+
+            savedEmployee = result?.[0] || null;
+            console.log("Employee inserted successfully:", result);
+
+            // Log activity
+            if (currentUser && savedEmployee) {
+              logActivity(
+                "employee",
+                "create",
+                `تم إضافة موظف جديد ${data.name}`,
+                currentUser.id,
+                { employeeId: savedEmployee.id },
+              );
+            }
+
+            toast({
+              title: "تمت الإضافة بنجاح",
+              description: "تم إضافة الموظف الجديد بنجاح",
+            });
           }
-
-          console.log("Employee updated successfully:", result);
-        } else {
-          console.log("Inserting new employee");
-          const { data: result, error } = await supabase
-            .from("employees")
-            .insert([data])
-            .select();
-
-          if (error) {
-            console.error("Error inserting employee:", error);
-            throw error;
-          }
-
-          console.log("Employee inserted successfully:", result);
+        } catch (supabaseError) {
+          console.error(
+            "Supabase operation failed, falling back to localStorage:",
+            supabaseError,
+          );
+          // Fall back to localStorage if Supabase operation fails
+          savedEmployee = await saveToLocalStorage();
         }
       } else {
         // Save to localStorage for persistence
+        savedEmployee = await saveToLocalStorage();
+      }
+
+      async function saveToLocalStorage() {
         const savedEmployees = JSON.parse(
           localStorage.getItem("employees") || "[]",
         );
         const newEmployee = {
-          ...data,
+          ...employeeData,
           id: employee?.id || Date.now().toString(),
           created_at: new Date().toISOString(),
-          status: "active",
         };
 
         if (employee?.id) {
           // Update existing employee
           const updatedEmployees = savedEmployees.map((emp: any) =>
-            emp.id === employee.id ? newEmployee : emp,
+            emp.id === employee.id ? { ...emp, ...employeeData } : emp,
           );
           localStorage.setItem("employees", JSON.stringify(updatedEmployees));
+
+          // Log activity
+          if (currentUser) {
+            logActivity(
+              "employee",
+              "update",
+              `تم تحديث بيانات الموظف ${data.name}`,
+              currentUser.id,
+              { employeeId: employee.id },
+            );
+          }
+
+          toast({
+            title: "تم التحديث بنجاح",
+            description: "تم تحديث بيانات الموظف بنجاح",
+          });
         } else {
           // Add new employee
           savedEmployees.push(newEmployee);
           localStorage.setItem("employees", JSON.stringify(savedEmployees));
+
+          // Log activity
+          if (currentUser) {
+            logActivity(
+              "employee",
+              "create",
+              `تم إضافة موظف جديد ${data.name}`,
+              currentUser.id,
+              { employeeId: newEmployee.id },
+            );
+          }
+
+          toast({
+            title: "تمت الإضافة بنجاح",
+            description: "تم إضافة الموظف الجديد بنجاح",
+          });
         }
 
-        console.log("Mock save (Supabase not available):", data);
+        return newEmployee;
       }
 
       onOpenChange(false);
@@ -124,6 +246,12 @@ export function EmployeeDialog({
       form.setError("root", {
         type: "manual",
         message: `حدث خطأ أثناء حفظ بيانات الموظف: ${error instanceof Error ? error.message : "خطأ غير معروف"}`,
+      });
+
+      toast({
+        title: "خطأ",
+        description: `حدث خطأ أثناء حفظ بيانات الموظف: ${error instanceof Error ? error.message : "خطأ غير معروف"}`,
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);

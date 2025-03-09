@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/lib/hooks/use-auth.tsx";
+import { useAuth } from "@/lib/hooks/use-auth";
 import { logActivity } from "@/lib/activity-logger";
 import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";

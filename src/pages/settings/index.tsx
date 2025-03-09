@@ -10,6 +10,7 @@ import {
   Database,
   Settings as SettingsIcon,
   HelpCircle,
+  Save,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -50,6 +51,13 @@ export default function SettingsPage() {
       description: "تعديل إعدادات النظام العامة",
       icon: <SettingsIcon className="h-8 w-8" />,
       path: "/settings/system",
+      permission: "manage_settings",
+    },
+    {
+      title: "النسخ الاحتياطي",
+      description: "إنشاء واستعادة النسخ الاحتياطية للبيانات",
+      icon: <FileText className="h-8 w-8" />,
+      path: "/settings/backup",
       permission: "manage_settings",
     },
     {

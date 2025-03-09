@@ -110,6 +110,11 @@ export function Sidebar() {
       href: "/settings",
     },
     {
+      icon: <FileText className="h-5 w-5" />,
+      label: "النسخ الاحتياطي",
+      href: "/settings/backup",
+    },
+    {
       icon: <HelpCircle className="h-5 w-5" />,
       label: "اختبار الاتصال",
       href: "/test-connection",

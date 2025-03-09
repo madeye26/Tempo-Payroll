@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase, mockEmployees } from "@/lib/supabase";
 import { Database } from "@/types/schema";
+import { useQueryCache } from "./use-query-cache";
 
 type Employee = Database["public"]["Tables"]["employees"]["Row"];
 

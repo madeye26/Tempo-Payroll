@@ -19,6 +19,7 @@ const SettingsPage = lazy(() => import("./pages/settings"));
 const FormulasPage = lazy(() => import("./pages/settings/formulas"));
 const UsersPage = lazy(() => import("./pages/settings/users"));
 const ActivityLogsPage = lazy(() => import("./pages/settings/activity-logs"));
+const BackupPage = lazy(() => import("./pages/settings/backup"));
 const TestConnectionPage = lazy(() => import("./pages/test-connection"));
 
 function App() {
@@ -304,6 +305,14 @@ function App() {
                 element={
                   <ProtectedRoute requiredPermission="manage_settings">
                     <ActivityLogsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="settings/backup"
+                element={
+                  <ProtectedRoute requiredPermission="manage_settings">
+                    <BackupPage />
                   </ProtectedRoute>
                 }
               />

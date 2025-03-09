@@ -18,7 +18,17 @@ type AuthContextType = {
   hasPermission: (permission: string) => boolean;
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(
+  undefined,
+);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
 
 // Mock users for localStorage fallback
 const mockUsers = [
@@ -94,10 +104,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     password: string,
   ): Promise<boolean> => {
     console.log("Using mock login fallback");
-    // Mock login for localStorage fallback
-    const mockUser = mockUsers.find(
+    // First check mock users array
+    let mockUser = mockUsers.find(
       (u) => u.email === email && u.password === password,
     );
+
+    // If not found in default mock users, check localStorage for custom added users
+    if (!mockUser) {
+      const customUsers = JSON.parse(
+        localStorage.getItem("mock_auth_users") || "[]",
+      );
+      mockUser = customUsers.find(
+        (u: any) => u.email === email && u.password === password,
+      );
+    }
 
     if (mockUser) {
       const { password, ...userWithoutPassword } = mockUser;
@@ -250,10 +270,4 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
+// useAuth hook is defined above

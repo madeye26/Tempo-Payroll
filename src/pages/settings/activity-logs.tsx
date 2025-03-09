@@ -28,7 +28,8 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { getActivityLogs, ActivityLog } from "@/lib/activity-logger";
-import { useAuth } from "@/lib/hooks/use-auth.tsx";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/hooks/use-auth";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { DataExport } from "@/components/ui/data-export";
 
@@ -82,8 +83,24 @@ export default function ActivityLogsPage() {
 
     window.addEventListener("activity-logged", handleActivityLogged);
 
+    // Set up realtime subscription if supabase is available
+    let subscription: any;
+    if (supabase) {
+      subscription = supabase
+        .channel("activity_logs_changes")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "activity_logs" },
+          () => fetchLogs(),
+        )
+        .subscribe();
+    }
+
     return () => {
       window.removeEventListener("activity-logged", handleActivityLogged);
+      if (subscription) {
+        subscription.unsubscribe();
+      }
     };
   }, [page, limit, userFilter, typeFilter, actionFilter, startDate, endDate]);
 

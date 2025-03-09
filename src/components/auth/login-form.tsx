@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useAuth } from "@/lib/hooks/use-auth.tsx";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 const loginSchema = z.object({
   email: z.string().email("البريد الإلكتروني غير صالح"),

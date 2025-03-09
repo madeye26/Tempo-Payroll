@@ -55,35 +55,37 @@ export const logActivity = async (
       created_at: timestamp,
     };
 
+    // Always log to localStorage first for reliability
+    const existingLogs = JSON.parse(
+      localStorage.getItem("activity_logs") || "[]",
+    );
+    const newLog = {
+      id: Date.now().toString(),
+      ...activityData,
+    };
+    existingLogs.unshift(newLog); // Add to beginning of array
+    localStorage.setItem("activity_logs", JSON.stringify(existingLogs));
+
+    // Then try to log to Supabase if available
     if (supabase) {
-      // Log to Supabase
-      const { error } = await supabase
-        .from("activity_logs")
-        .insert([activityData]);
-      if (error) {
-        console.error("Error logging activity to Supabase:", error);
-        // Fallback to localStorage if Supabase fails
-        const existingLogs = JSON.parse(
-          localStorage.getItem("activity_logs") || "[]",
-        );
-        const newLog = {
-          id: Date.now().toString(),
-          ...activityData,
-        };
-        existingLogs.unshift(newLog); // Add to beginning of array
-        localStorage.setItem("activity_logs", JSON.stringify(existingLogs));
+      try {
+        const { error } = await supabase.from("activity_logs").insert([
+          {
+            id: newLog.id,
+            ...activityData,
+          },
+        ]);
+
+        if (error) {
+          console.error("Error logging activity to Supabase:", error);
+          // Already saved to localStorage above
+        } else {
+          console.log("Activity logged to Supabase successfully");
+        }
+      } catch (supabaseError) {
+        console.error("Supabase operation failed:", supabaseError);
+        // Already saved to localStorage above
       }
-    } else {
-      // Log to localStorage as fallback
-      const existingLogs = JSON.parse(
-        localStorage.getItem("activity_logs") || "[]",
-      );
-      const newLog = {
-        id: Date.now().toString(),
-        ...activityData,
-      };
-      existingLogs.unshift(newLog); // Add to beginning of array
-      localStorage.setItem("activity_logs", JSON.stringify(existingLogs));
     }
 
     // Force update any components that might be listening for activity logs
@@ -113,52 +115,66 @@ export const getActivityLogs = async (
 ): Promise<{ logs: ActivityLog[]; total: number }> => {
   try {
     if (supabase) {
-      let query = supabase
-        .from("activity_logs")
-        .select(
-          `
-          *,
-          users:user_id (name, email)
-        `,
-          { count: "exact" },
-        )
-        .order("created_at", { ascending: false });
+      try {
+        let query = supabase
+          .from("activity_logs")
+          .select(
+            `
+            *,
+            users:user_id (name, email)
+          `,
+            { count: "exact" },
+          )
+          .order("created_at", { ascending: false });
 
-      // Apply filters
-      if (filters?.userId) {
-        query = query.eq("user_id", filters.userId);
+        // Apply filters
+        if (filters?.userId) {
+          query = query.eq("user_id", filters.userId);
+        }
+        if (filters?.type) {
+          query = query.eq("type", filters.type);
+        }
+        if (filters?.action) {
+          query = query.eq("action", filters.action);
+        }
+        if (filters?.startDate) {
+          query = query.gte("created_at", filters.startDate);
+        }
+        if (filters?.endDate) {
+          query = query.lte("created_at", filters.endDate);
+        }
+
+        // Apply pagination
+        const from = (page - 1) * limit;
+        const to = from + limit - 1;
+        query = query.range(from, to);
+
+        const { data, error, count } = await query;
+
+        if (error) {
+          console.error("Supabase query error:", error);
+          // Fall back to localStorage if Supabase query fails
+          return getLogsFromLocalStorage();
+        }
+
+        // Format the logs with user information
+        const formattedLogs = data.map((log) => ({
+          ...log,
+          user_name: log.users?.name || "غير معروف",
+          user_email: log.users?.email || "غير معروف",
+        }));
+
+        return { logs: formattedLogs, total: count || 0 };
+      } catch (supabaseError) {
+        console.error("Supabase operation failed:", supabaseError);
+        // Fall back to localStorage if Supabase operation fails
+        return getLogsFromLocalStorage();
       }
-      if (filters?.type) {
-        query = query.eq("type", filters.type);
-      }
-      if (filters?.action) {
-        query = query.eq("action", filters.action);
-      }
-      if (filters?.startDate) {
-        query = query.gte("created_at", filters.startDate);
-      }
-      if (filters?.endDate) {
-        query = query.lte("created_at", filters.endDate);
-      }
-
-      // Apply pagination
-      const from = (page - 1) * limit;
-      const to = from + limit - 1;
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
-
-      if (error) throw error;
-
-      // Format the logs with user information
-      const formattedLogs = data.map((log) => ({
-        ...log,
-        user_name: log.users?.name || "غير معروف",
-        user_email: log.users?.email || "غير معروف",
-      }));
-
-      return { logs: formattedLogs, total: count || 0 };
     } else {
+      return getLogsFromLocalStorage();
+    }
+
+    function getLogsFromLocalStorage() {
       // Get logs from localStorage
       const existingLogs = JSON.parse(
         localStorage.getItem("activity_logs") || "[]",

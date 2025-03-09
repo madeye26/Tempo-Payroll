@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/lib/hooks/use-auth.tsx";
+import { useAuth } from "@/lib/hooks/use-auth";
 import { logActivity } from "@/lib/activity-logger";
 import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
@@ -85,60 +85,75 @@ export default function UsersPage() {
     },
   });
 
-  // Fetch users
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true);
-      try {
-        if (supabase) {
-          const { data, error } = await supabase
-            .from("users")
-            .select("*")
-            .order("created_at", { ascending: false });
+  // Fetch users function
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("users")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-          if (error) throw error;
-          setUsers(data || []);
-        } else {
-          // Mock data
-          const mockUsers = [
-            {
-              id: "1",
-              name: "المدير",
-              email: "admin@example.com",
-              role: "admin",
-              created_at: "2024-01-01T00:00:00.000Z",
-            },
-            {
-              id: "2",
-              name: "مدير الموارد البشرية",
-              email: "manager@example.com",
-              role: "manager",
-              created_at: "2024-01-02T00:00:00.000Z",
-            },
-            {
-              id: "3",
-              name: "المحاسب",
-              email: "accountant@example.com",
-              role: "accountant",
-              created_at: "2024-01-03T00:00:00.000Z",
-            },
-            {
-              id: "4",
-              name: "مستخدم عادي",
-              email: "viewer@example.com",
-              role: "viewer",
-              created_at: "2024-01-04T00:00:00.000Z",
-            },
-          ];
-          setUsers(mockUsers as User[]);
+        if (error) throw error;
+        setUsers(data || []);
+      } else {
+        // Get saved users from localStorage first
+        const savedUsers = localStorage.getItem("users");
+        if (savedUsers) {
+          try {
+            const parsedUsers = JSON.parse(savedUsers);
+            setUsers(parsedUsers);
+            return;
+          } catch (parseError) {
+            console.error("Error parsing saved users:", parseError);
+          }
         }
-      } catch (error) {
-        console.error("Error fetching users:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
 
+        // Fallback to default mock data if no saved users
+        const mockUsers = [
+          {
+            id: "1",
+            name: "المدير",
+            email: "admin@example.com",
+            role: "admin",
+            created_at: "2024-01-01T00:00:00.000Z",
+          },
+          {
+            id: "2",
+            name: "مدير الموارد البشرية",
+            email: "manager@example.com",
+            role: "manager",
+            created_at: "2024-01-02T00:00:00.000Z",
+          },
+          {
+            id: "3",
+            name: "المحاسب",
+            email: "accountant@example.com",
+            role: "accountant",
+            created_at: "2024-01-03T00:00:00.000Z",
+          },
+          {
+            id: "4",
+            name: "مستخدم عادي",
+            email: "viewer@example.com",
+            role: "viewer",
+            created_at: "2024-01-04T00:00:00.000Z",
+          },
+        ];
+        setUsers(mockUsers as User[]);
+        // Save default users to localStorage if not already there
+        localStorage.setItem("users", JSON.stringify(mockUsers));
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial fetch
+  useEffect(() => {
     fetchUsers();
   }, []);
 
@@ -162,160 +177,134 @@ export default function UsersPage() {
 
     setIsSubmitting(true);
     try {
+      // Create the user object
+      const newUserId = editingUser?.id || Date.now().toString();
+      const userData = {
+        id: newUserId,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        created_at: editingUser?.created_at || new Date().toISOString(),
+      };
+
+      // Add to mock auth users for login functionality
+      if (!editingUser) {
+        const mockAuthUsers = JSON.parse(
+          localStorage.getItem("mock_auth_users") || "[]",
+        );
+        mockAuthUsers.push({
+          id: newUserId,
+          email: data.email,
+          password: data.password,
+          role: data.role,
+          name: data.name,
+        });
+        localStorage.setItem("mock_auth_users", JSON.stringify(mockAuthUsers));
+      }
+
+      let supabaseSuccess = false;
+
       if (supabase) {
-        if (editingUser) {
-          // Update existing user
-          const updateData = {
-            name: data.name,
-            role: data.role,
-          };
+        try {
+          if (editingUser) {
+            // Update existing user
+            const updateData = {
+              name: data.name,
+              role: data.role,
+              updated_at: new Date().toISOString(),
+            };
 
-          const { error } = await supabase
-            .from("users")
-            .update(updateData)
-            .eq("id", editingUser.id);
+            const { error } = await supabase
+              .from("users")
+              .update(updateData)
+              .eq("id", editingUser.id);
 
-          if (error) throw error;
-
-          // Update password if provided
-          if (data.password) {
-            // In a real app, you would use Supabase Auth Admin API to update password
-            console.log("Would update password for user", editingUser.id);
-          }
-
-          logActivity(
-            "setting",
-            "update",
-            `تم تحديث بيانات المستخدم ${data.name}`,
-            currentUser.id,
-            { userId: editingUser.id },
-          );
-
-          toast({
-            title: "تم التحديث بنجاح",
-            description: "تم تحديث بيانات المستخدم بنجاح",
-          });
-        } else {
-          // Use mock implementation instead of Supabase Auth API
-          console.log("Creating user with mock implementation");
-          const newUserId = Date.now().toString();
-          const mockAuthData = {
-            user: {
-              id: newUserId,
-              email: data.email,
-            },
-          };
-          const authData = mockAuthData;
-          const authError = null;
-
-          // Also add to mock auth users
-          const mockAuthUsers = JSON.parse(
-            localStorage.getItem("mock_auth_users") || "[]",
-          );
-          mockAuthUsers.push({
-            id: newUserId,
-            email: data.email,
-            password: data.password,
-            role: data.role,
-            name: data.name,
-          });
-          localStorage.setItem(
-            "mock_auth_users",
-            JSON.stringify(mockAuthUsers),
-          );
-
-          if (authError) throw authError;
-
-          if (authData.user) {
+            if (error) {
+              console.error("Error updating user in Supabase:", error);
+            } else {
+              console.log("User updated successfully in Supabase");
+              supabaseSuccess = true;
+            }
+          } else {
+            // Create new user
             const { error } = await supabase.from("users").insert([
               {
-                id: authData.user.id,
                 name: data.name,
                 email: data.email,
                 role: data.role,
               },
             ]);
 
-            if (error) throw error;
+            if (error) {
+              console.error("Error inserting user into Supabase:", error);
+            } else {
+              console.log("User created successfully in Supabase");
+              supabaseSuccess = true;
 
-            logActivity(
-              "setting",
-              "create",
-              `تم إنشاء مستخدم جديد ${data.name}`,
-              currentUser.id,
-            );
+              // Fetch the newly created user to get its ID
+              const { data: newUserData, error: fetchError } = await supabase
+                .from("users")
+                .select("*")
+                .eq("email", data.email)
+                .single();
 
-            toast({
-              title: "تم الإنشاء بنجاح",
-              description: "تم إنشاء المستخدم الجديد بنجاح",
-            });
+              if (!fetchError && newUserData) {
+                userData.id = newUserData.id;
+              }
+            }
           }
+        } catch (supabaseError) {
+          console.error("Supabase operation failed:", supabaseError);
         }
+      }
+
+      // Always update localStorage for reliability
+      if (editingUser) {
+        // Update existing user
+        const updatedUsers = users.map((u) =>
+          u.id === editingUser.id
+            ? { ...u, name: data.name, role: data.role }
+            : u,
+        );
+        setUsers(updatedUsers);
+        localStorage.setItem("users", JSON.stringify(updatedUsers));
+
+        logActivity(
+          "setting",
+          "update",
+          `تم تحديث بيانات المستخدم ${data.name}`,
+          currentUser.id,
+          { userId: editingUser.id },
+        );
+
+        toast({
+          title: "تم التحديث بنجاح",
+          description: "تم تحديث بيانات المستخدم بنجاح",
+        });
       } else {
-        // Mock implementation
-        if (editingUser) {
-          // Update existing user
-          const updatedUsers = users.map((u) =>
-            u.id === editingUser.id
-              ? { ...u, name: data.name, role: data.role }
-              : u,
-          );
-          setUsers(updatedUsers);
-          localStorage.setItem("users", JSON.stringify(updatedUsers));
+        // Add new user
+        const updatedUsers = [...users, userData];
+        setUsers(updatedUsers);
+        localStorage.setItem("users", JSON.stringify(updatedUsers));
 
-          logActivity(
-            "setting",
-            "update",
-            `تم تحديث بيانات المستخدم ${data.name}`,
-            currentUser.id,
-            { userId: editingUser.id },
-          );
+        logActivity(
+          "setting",
+          "create",
+          `تم إنشاء مستخدم جديد ${data.name}`,
+          currentUser.id,
+        );
 
-          toast({
-            title: "تم التحديث بنجاح",
-            description: "تم تحديث بيانات المستخدم بنجاح",
-          });
-        } else {
-          // Create new user
-          const newUser = {
-            id: Date.now().toString(),
-            name: data.name,
-            email: data.email,
-            role: data.role,
-            created_at: new Date().toISOString(),
-          };
-          const updatedUsers = [...users, newUser];
-          setUsers(updatedUsers);
-          localStorage.setItem("users", JSON.stringify(updatedUsers));
+        toast({
+          title: "تم الإنشاء بنجاح",
+          description: supabaseSuccess
+            ? "تم إنشاء المستخدم الجديد بنجاح وحفظه في قاعدة البيانات"
+            : "تم إنشاء المستخدم الجديد بنجاح",
+        });
+      }
 
-          // Also add to mock auth users
-          const mockAuthUsers = JSON.parse(
-            localStorage.getItem("mock_auth_users") || "[]",
-          );
-          mockAuthUsers.push({
-            id: newUser.id,
-            email: data.email,
-            password: data.password,
-            role: data.role,
-            name: data.name,
-          });
-          localStorage.setItem(
-            "mock_auth_users",
-            JSON.stringify(mockAuthUsers),
-          );
-
-          logActivity(
-            "setting",
-            "create",
-            `تم إنشاء مستخدم جديد ${data.name}`,
-            currentUser.id,
-          );
-
-          toast({
-            title: "تم الإنشاء بنجاح",
-            description: "تم إنشاء المستخدم الجديد بنجاح",
-          });
-        }
+      // Refresh the users list
+      if (supabaseSuccess) {
+        fetchUsers();
       }
 
       setDialogOpen(false);
@@ -336,6 +325,8 @@ export default function UsersPage() {
     if (!userToDelete || !currentUser) return;
 
     try {
+      let supabaseSuccess = false;
+
       if (supabase) {
         // Delete user from database
         const { error } = await supabase
@@ -343,16 +334,20 @@ export default function UsersPage() {
           .delete()
           .eq("id", userToDelete);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error deleting user from Supabase:", error);
+        } else {
+          supabaseSuccess = true;
+        }
 
         // In a real app, you would also delete the user from Supabase Auth
         // using the Admin API
-      } else {
-        // Mock implementation
-        const updatedUsers = users.filter((u) => u.id !== userToDelete);
-        setUsers(updatedUsers);
-        localStorage.setItem("users", JSON.stringify(updatedUsers));
       }
+
+      // Always update localStorage for reliability
+      const updatedUsers = users.filter((u) => u.id !== userToDelete);
+      setUsers(updatedUsers);
+      localStorage.setItem("users", JSON.stringify(updatedUsers));
 
       const userToDeleteName =
         users.find((u) => u.id === userToDelete)?.name || "";
@@ -366,8 +361,15 @@ export default function UsersPage() {
 
       toast({
         title: "تم الحذف بنجاح",
-        description: "تم حذف المستخدم بنجاح",
+        description: supabaseSuccess
+          ? "تم حذف المستخدم بنجاح من قاعدة البيانات"
+          : "تم حذف المستخدم بنجاح",
       });
+
+      // Refresh the users list if deleted from Supabase
+      if (supabaseSuccess) {
+        fetchUsers();
+      }
 
       setDeleteDialogOpen(false);
       setUserToDelete(null);
