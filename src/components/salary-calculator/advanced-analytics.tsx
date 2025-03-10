@@ -20,10 +20,44 @@ interface SalaryData {
 }
 
 interface AdvancedAnalyticsProps {
-  data: SalaryData[];
+  reports: any[];
 }
 
-export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
+export function AdvancedAnalytics({ reports }: AdvancedAnalyticsProps) {
+  // Process reports to create data for charts
+  const data = processReports(reports);
+
+  // Function to process reports into chart data
+  function processReports(reports: any[]) {
+    // Group reports by month and year
+    const groupedData: Record<string, SalaryData> = {};
+    reports.forEach((report) => {
+      const key = `${report.year}-${report.month}`;
+      if (!groupedData[key]) {
+        groupedData[key] = {
+          month: report.month,
+          year: report.year,
+          totalSalaries: 0,
+          totalDeductions: 0,
+          totalAdvances: 0,
+          employeeCount: 0,
+          averageSalary: 0,
+        };
+      }
+      groupedData[key].totalSalaries += report.netSalary;
+      groupedData[key].totalDeductions += report.totalDeductions;
+      groupedData[key].totalAdvances += report.advances;
+      groupedData[key].employeeCount += 1;
+    });
+
+    // Calculate average salary for each month
+    Object.values(groupedData).forEach((data) => {
+      data.averageSalary =
+        data.employeeCount > 0 ? data.totalSalaries / data.employeeCount : 0;
+    });
+
+    return Object.values(groupedData);
+  }
   const [period, setPeriod] = useState("year");
   const [chartType, setChartType] = useState("bar");
 

@@ -36,6 +36,7 @@ interface ReportTemplateBuilderProps {
   onOpenChange: (open: boolean) => void;
   onSave: (template: ReportTemplate) => void;
   initialTemplate?: ReportTemplate;
+  savedTemplates?: ReportTemplate[];
 }
 
 export function ReportTemplateBuilder({
