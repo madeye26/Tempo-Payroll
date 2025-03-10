@@ -1,17 +1,8 @@
 #!/bin/bash
-echo "Starting Salary Management System..."
-echo ""
-echo "This will start the application on your local network."
-echo "After starting, the app will be available at:"
-echo ""
+echo "Setting up environment variables..."
+export VITE_SUPABASE_URL=https://dreamy-colden8-l6gjb.supabase.co
+export VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZWFteS1jb2xkZW44LWw2Z2piIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTc1MzA0MDAsImV4cCI6MjAzMzEwNjQwMH0.Yx-Ky_Ht_Ij_Ij_Ij_Ij_Ij_Ij_Ij_Ij_Ij_Ij_Ij_Ij
 
-# Get the IP address
-IP=$(hostname -I | awk '{print $1}')
-
-echo "http://$IP:3000"
-echo ""
-echo "Press Ctrl+C to stop the server when done."
-echo ""
-
-cd "$(dirname "$0")"
-npx serve -s dist -l tcp://0.0.0.0:3000
+echo "Starting the application..."
+npm run build
+npm run preview
