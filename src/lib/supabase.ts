@@ -24,13 +24,50 @@ console.log("Supabase configuration:", {
 let supabaseClient = null;
 try {
   if (supabaseUrl && supabaseAnonKey) {
-    supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    console.log("Initializing Supabase client with URL:", supabaseUrl);
+    console.log("Anon key available:", !!supabaseAnonKey);
+
+    supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
+        storageKey: "supabase_auth_token",
+        debug: true,
       },
     });
     console.log("Supabase client initialized successfully");
+
+    // Test the connection
+    supabaseClient.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        console.error("Error testing Supabase connection:", error);
+      } else {
+        console.log(
+          "Supabase connection test successful",
+          data.session ? "Session exists" : "No session",
+        );
+      }
+    });
+
+    // Log auth state changes for debugging
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      console.log(
+        "Auth state changed:",
+        event,
+        session ? "Session exists" : "No session",
+      );
+
+      // Dispatch a custom event that our auth provider can listen to
+      window.dispatchEvent(
+        new CustomEvent("supabase-auth-state-change", {
+          detail: { event, session },
+        }),
+      );
+    });
+  } else {
+    console.warn("Cannot initialize Supabase client - missing URL or key");
+    console.log("URL available:", !!supabaseUrl);
+    console.log("Key available:", !!supabaseAnonKey);
   }
 } catch (error) {
   console.error("Error initializing Supabase client:", error);

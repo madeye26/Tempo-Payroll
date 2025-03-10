@@ -34,13 +34,24 @@ export function DataBackup() {
         absences: JSON.parse(localStorage.getItem("absences") || "[]"),
         salaries: JSON.parse(localStorage.getItem("salaries") || "[]"),
         users: JSON.parse(localStorage.getItem("users") || "[]"),
+        mock_auth_users: JSON.parse(
+          localStorage.getItem("mock_auth_users") || "[]",
+        ),
         activity_logs: JSON.parse(
           localStorage.getItem("activity_logs") || "[]",
         ),
         system_settings: JSON.parse(
           localStorage.getItem("system_settings") || "{}",
         ),
-        // Add any other data you want to backup
+        // Add metadata
+        metadata: {
+          version: "1.0",
+          timestamp: new Date().toISOString(),
+          device: navigator.userAgent,
+          exportedBy:
+            JSON.parse(localStorage.getItem("auth_user") || "{}")?.name ||
+            "Unknown",
+        },
       };
 
       // Convert to JSON string
@@ -126,6 +137,15 @@ export function DataBackup() {
       localStorage.setItem("absences", JSON.stringify(data.absences || []));
       localStorage.setItem("salaries", JSON.stringify(data.salaries || []));
       localStorage.setItem("users", JSON.stringify(data.users));
+
+      // Import mock auth users if available
+      if (data.mock_auth_users) {
+        localStorage.setItem(
+          "mock_auth_users",
+          JSON.stringify(data.mock_auth_users),
+        );
+      }
+
       localStorage.setItem(
         "activity_logs",
         JSON.stringify(data.activity_logs || []),
@@ -136,6 +156,25 @@ export function DataBackup() {
           "system_settings",
           JSON.stringify(data.system_settings),
         );
+      }
+
+      // Log the import activity
+      const currentUser = JSON.parse(
+        localStorage.getItem("auth_user") || "null",
+      );
+      if (currentUser) {
+        try {
+          const { logActivity } = await import("@/lib/activity-logger");
+          logActivity(
+            "setting",
+            "import",
+            `تم استيراد بيانات النظام من نسخة احتياطية`,
+            currentUser.id,
+            { timestamp: new Date().toISOString() },
+          );
+        } catch (error) {
+          console.error("Failed to log import activity", error);
+        }
       }
 
       toast({

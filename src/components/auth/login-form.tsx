@@ -41,13 +41,88 @@ export function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
+      console.log("Login form submission for:", data.email);
+      console.log("Supabase available:", !!supabase);
+
+      // Try direct Supabase login first if available
+      if (supabase) {
+        console.log("Attempting direct Supabase login");
+        try {
+          const { data: authData, error } =
+            await supabase.auth.signInWithPassword({
+              email: data.email,
+              password: data.password,
+            });
+
+          if (error) {
+            console.error("Direct Supabase login error:", error);
+            console.log("Falling back to useAuth login method");
+          } else if (authData.user) {
+            console.log("Direct Supabase login successful", authData.user);
+
+            // Import auth utils to ensure user is in public table
+            const { ensureUserInPublicTable } = await import(
+              "@/lib/auth-utils"
+            );
+            const userData = await ensureUserInPublicTable(authData.user);
+
+            if (userData) {
+              // Set user in localStorage to maintain session
+              localStorage.setItem(
+                "auth_user",
+                JSON.stringify({
+                  id: userData.id,
+                  email: userData.email,
+                  role: userData.role,
+                  name: userData.name,
+                  avatar: userData.avatar,
+                  permissions: userData.permissions,
+                }),
+              );
+            } else {
+              // Fallback if user data couldn't be retrieved
+              localStorage.setItem(
+                "auth_user",
+                JSON.stringify({
+                  id: authData.user.id,
+                  email: authData.user.email,
+                  name:
+                    authData.user.user_metadata?.name ||
+                    authData.user.email.split("@")[0],
+                  role: authData.user.user_metadata?.role || "viewer",
+                }),
+              );
+            }
+
+            toast({
+              title: "تم تسجيل الدخول بنجاح",
+              description: "مرحباً بك في نظام إدارة الرواتب",
+            });
+
+            // Force navigation and page reload to ensure auth state is recognized
+            window.location.href = "/";
+            return;
+          }
+        } catch (directLoginError) {
+          console.error(
+            "Exception during direct Supabase login:",
+            directLoginError,
+          );
+          console.log("Falling back to useAuth login method");
+        }
+      }
+
+      // Fall back to the login function from useAuth
+      console.log("Using useAuth login method");
       const success = await login(data.email, data.password);
+
       if (success) {
         toast({
           title: "تم تسجيل الدخول بنجاح",
           description: "مرحباً بك في نظام إدارة الرواتب",
         });
-        navigate("/");
+        // Force navigation and page reload to ensure auth state is recognized
+        window.location.href = "/";
       } else {
         setError("root", {
           message: "البريد الإلكتروني أو كلمة المرور غير صحيحة",

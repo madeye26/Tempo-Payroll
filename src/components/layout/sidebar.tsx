@@ -124,6 +124,11 @@ export function Sidebar() {
       label: "اختبار الاتصال",
       href: "/test-connection",
     },
+    {
+      icon: <HelpCircle className="h-5 w-5" />,
+      label: "فحص النظام",
+      href: "/system-check",
+    },
   ];
 
   const SidebarContent = () => (
