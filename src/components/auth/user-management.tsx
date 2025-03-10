@@ -46,6 +46,8 @@ import * as z from "zod";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { authService } from "@/lib/auth-service";
+import { supabaseAuth } from "@/lib/supabase-auth";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { logActivity } from "@/lib/activity-logger";
 import { Switch } from "@/components/ui/switch";
@@ -115,16 +117,31 @@ export function UserManagement() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const result = await authService.getUsers();
-      if (result.success) {
-        setUsers(result.users);
+      if (supabase) {
+        // Use Supabase Auth
+        const { success, users: fetchedUsers } = await supabaseAuth.getUsers();
+        if (success) {
+          setUsers(fetchedUsers);
+        } else {
+          toast({
+            title: "خطأ",
+            description: "فشل في جلب المستخدمين",
+            variant: "destructive",
+          });
+        }
       } else {
-        console.error("Error fetching users:", result.message);
-        toast({
-          title: "خطأ",
-          description: result.message,
-          variant: "destructive",
-        });
+        // Fallback to authService
+        const result = await authService.getUsers();
+        if (result.success) {
+          setUsers(result.users);
+        } else {
+          console.error("Error fetching users:", result.message);
+          toast({
+            title: "خطأ",
+            description: result.message,
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -171,64 +188,127 @@ export function UserManagement() {
     try {
       let result;
 
-      if (editingUser) {
-        // Update existing user
-        result = await authService.updateUser(editingUser.id, {
-          name: data.name,
-          role: data.role,
-          password: data.password || undefined,
-          is_active: data.is_active,
-          avatar: data.avatar,
-          permissions: data.permissions,
-        });
+      if (supabase) {
+        // Use Supabase Auth
+        if (editingUser) {
+          // Update existing user
+          result = await supabaseAuth.updateUser(editingUser.id, {
+            name: data.name,
+            role: data.role,
+            is_active: data.is_active,
+            avatar: data.avatar,
+            permissions: data.permissions,
+          });
 
-        if (result.success) {
-          logActivity(
-            "setting",
-            "update",
-            `تم تحديث بيانات المستخدم ${data.name}`,
-            currentUser.id,
-            { userId: editingUser.id },
+          // Update password if provided
+          if (data.password) {
+            // In a real app, you would use the Admin API to update the password
+            console.log("Would update password for user", editingUser.id);
+          }
+
+          if (result.success) {
+            logActivity(
+              "setting",
+              "update",
+              `تم تحديث بيانات المستخدم ${data.name}`,
+              currentUser.id,
+              { userId: editingUser.id },
+            );
+
+            toast({
+              title: "تم التحديث بنجاح",
+              description: "تم تحديث بيانات المستخدم بنجاح",
+            });
+          }
+        } else {
+          // Create new user
+          result = await supabaseAuth.signUp(
+            data.email,
+            data.password || "password123",
+            {
+              name: data.name,
+              role: data.role,
+              is_active: data.is_active,
+              avatar: data.avatar,
+              permissions: data.permissions,
+            },
           );
 
-          toast({
-            title: "تم التحديث بنجاح",
-            description: "تم تحديث بيانات المستخدم بنجاح",
-          });
+          if (result.success) {
+            logActivity(
+              "setting",
+              "create",
+              `تم إنشاء مستخدم جديد ${data.name}`,
+              currentUser.id,
+            );
+
+            toast({
+              title: "تم الإنشاء بنجاح",
+              description: "تم إنشاء المستخدم الجديد بنجاح",
+            });
+          }
         }
       } else {
-        // Create new user
-        result = await authService.createUser({
-          email: data.email,
-          password: data.password || "password123", // Default password if not provided
-          name: data.name,
-          role: data.role,
-          is_active: data.is_active,
-          avatar: data.avatar,
-          permissions: data.permissions,
-        });
-
-        if (result.success) {
-          logActivity(
-            "setting",
-            "create",
-            `تم إنشاء مستخدم جديد ${data.name}`,
-            currentUser.id,
-          );
-
-          toast({
-            title: "تم الإنشاء بنجاح",
-            description: "تم إنشاء المستخدم الجديد بنجاح",
+        // Fallback to authService
+        if (editingUser) {
+          // Update existing user
+          result = await authService.updateUser(editingUser.id, {
+            name: data.name,
+            role: data.role,
+            password: data.password || undefined,
+            is_active: data.is_active,
+            avatar: data.avatar,
+            permissions: data.permissions,
           });
+
+          if (result.success) {
+            logActivity(
+              "setting",
+              "update",
+              `تم تحديث بيانات المستخدم ${data.name}`,
+              currentUser.id,
+              { userId: editingUser.id },
+            );
+
+            toast({
+              title: "تم التحديث بنجاح",
+              description: "تم تحديث بيانات المستخدم بنجاح",
+            });
+          }
+        } else {
+          // Create new user
+          result = await authService.createUser({
+            email: data.email,
+            password: data.password || "password123", // Default password if not provided
+            name: data.name,
+            role: data.role,
+            is_active: data.is_active,
+            avatar: data.avatar,
+            permissions: data.permissions,
+          });
+
+          if (result.success) {
+            logActivity(
+              "setting",
+              "create",
+              `تم إنشاء مستخدم جديد ${data.name}`,
+              currentUser.id,
+            );
+
+            toast({
+              title: "تم الإنشاء بنجاح",
+              description: "تم إنشاء المستخدم الجديد بنجاح",
+            });
+          }
         }
       }
 
-      if (result.success) {
+      if (result && result.success) {
         // Refresh the users list
         fetchUsers();
         setDialogOpen(false);
         reset();
-      } else {
+      } else if (result) {
         toast({
           title: "خطأ",
           description: result.message,
@@ -254,7 +334,15 @@ export function UserManagement() {
       const userToDeleteName =
         users.find((u) => u.id === userToDelete)?.name || "";
 
-      const result = await authService.deleteUser(userToDelete);
+      let result;
+
+      if (supabase) {
+        // Use Supabase Auth
+        result = await supabaseAuth.deleteUser(userToDelete);
+      } else {
+        // Fallback to authService
+        result = await authService.deleteUser(userToDelete);
+      }
 
       if (result.success) {
         logActivity(

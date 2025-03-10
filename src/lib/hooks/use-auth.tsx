@@ -2,13 +2,15 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { supabase } from "../supabase";
 import { useLocalStorage } from "./use-local-storage";
 import { logActivity } from "../activity-logger";
-import { authService } from "../auth-service";
+import { supabaseAuth } from "../supabase-auth";
 
 type User = {
   id: string;
   email: string;
   role: "admin" | "manager" | "accountant" | "viewer";
   name: string;
+  avatar?: string;
+  permissions?: string[];
 };
 
 type AuthContextType = {
@@ -30,38 +32,6 @@ export const useAuth = () => {
   }
   return context;
 };
-
-// Mock users for localStorage fallback
-const mockUsers = [
-  {
-    id: "1",
-    email: "admin@example.com",
-    password: "password123", // In a real app, passwords would be hashed
-    role: "admin",
-    name: "المدير",
-  },
-  {
-    id: "2",
-    email: "manager@example.com",
-    password: "password123",
-    role: "manager",
-    name: "مدير الموارد البشرية",
-  },
-  {
-    id: "3",
-    email: "accountant@example.com",
-    password: "password123",
-    role: "accountant",
-    name: "المحاسب",
-  },
-  {
-    id: "4",
-    email: "viewer@example.com",
-    password: "password123",
-    role: "viewer",
-    name: "مستخدم عادي",
-  },
-];
 
 // Default permission mapping by role
 const rolePermissions = {
@@ -99,164 +69,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useLocalStorage<User | null>("auth_user", null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize localStorage with default data if empty and sync with Supabase
-  useEffect(() => {
-    const syncUsersWithSupabase = async () => {
-      if (supabase) {
-        try {
-          // Get users from Supabase
-          const { data, error } = await supabase.from("users").select("*");
-          if (error) throw error;
-
-          if (data && data.length > 0) {
-            // Update localStorage with Supabase data
-            localStorage.setItem("users", JSON.stringify(data));
-            console.log("Users synced from Supabase to localStorage");
-          } else {
-            // If no users in Supabase, push localStorage users to Supabase
-            const localUsers = JSON.parse(
-              localStorage.getItem("users") || "[]",
-            );
-            if (localUsers.length > 0) {
-              const { error: insertError } = await supabase
-                .from("users")
-                .insert(localUsers);
-              if (insertError)
-                console.error("Error pushing users to Supabase:", insertError);
-              else console.log("Users pushed from localStorage to Supabase");
-            }
-          }
-        } catch (error) {
-          console.error("Error syncing users with Supabase:", error);
-        }
-      }
-    };
-
-    syncUsersWithSupabase();
-
-    // Initialize users
-    if (!localStorage.getItem("users")) {
-      localStorage.setItem(
-        "users",
-        JSON.stringify([
-          {
-            id: "1",
-            name: "المدير",
-            email: "admin@example.com",
-            role: "admin",
-            created_at: "2024-01-01T00:00:00.000Z",
-          },
-          {
-            id: "2",
-            name: "مدير الموارد البشرية",
-            email: "manager@example.com",
-            role: "manager",
-            created_at: "2024-01-02T00:00:00.000Z",
-          },
-          {
-            id: "3",
-            name: "المحاسب",
-            email: "accountant@example.com",
-            role: "accountant",
-            created_at: "2024-01-03T00:00:00.000Z",
-          },
-          {
-            id: "4",
-            name: "مستخدم عادي",
-            email: "viewer@example.com",
-            role: "viewer",
-            created_at: "2024-01-04T00:00:00.000Z",
-          },
-        ]),
-      );
-    }
-
-    // Initialize mock auth users
-    if (!localStorage.getItem("mock_auth_users")) {
-      localStorage.setItem(
-        "mock_auth_users",
-        JSON.stringify([
-          {
-            id: "1",
-            email: "admin@example.com",
-            password: "password123",
-            role: "admin",
-            name: "المدير",
-          },
-          {
-            id: "2",
-            email: "manager@example.com",
-            password: "password123",
-            role: "manager",
-            name: "مدير الموارد البشرية",
-          },
-          {
-            id: "3",
-            email: "accountant@example.com",
-            password: "password123",
-            role: "accountant",
-            name: "المحاسب",
-          },
-          {
-            id: "4",
-            email: "viewer@example.com",
-            password: "password123",
-            role: "viewer",
-            name: "مستخدم عادي",
-          },
-        ]),
-      );
-    }
-  }, []);
-
-  // Helper function for mock login
-  const mockLoginFallback = async (
-    email: string,
-    password: string,
-  ): Promise<boolean> => {
-    console.log("Using mock login fallback");
-    // First check mock users array
-    let mockUser = mockUsers.find(
-      (u) => u.email === email && u.password === password,
-    );
-
-    // If not found in default mock users, check localStorage for custom added users
-    if (!mockUser) {
-      const customUsers = JSON.parse(
-        localStorage.getItem("mock_auth_users") || "[]",
-      );
-      mockUser = customUsers.find(
-        (u: any) => u.email === email && u.password === password,
-      );
-    }
-
-    if (mockUser) {
-      const { password, ...userWithoutPassword } = mockUser;
-      setUser(userWithoutPassword as User);
-      logActivity("auth", "login", "تسجيل دخول", mockUser.id);
-      return true;
-    }
-    return false;
-  };
-
-  // Check for existing session on mount
+  // Check for existing session on mount and listen for auth state changes
   useEffect(() => {
     const checkSession = async () => {
       setLoading(true);
       try {
         if (supabase) {
-          const { data, error } = await supabase.auth.getSession();
-          if (error) throw error;
+          const { data } = await supabase.auth.getSession();
 
           if (data.session) {
-            // Get user profile from database
-            const { data: userData, error: userError } = await supabase
-              .from("users")
-              .select("*")
-              .eq("id", data.session.user.id)
-              .single();
+            // Import auth utils dynamically to avoid circular dependencies
+            const { ensureUserInPublicTable } = await import("../auth-utils");
 
-            if (userError) throw userError;
+            // Get user profile from database
+            const userData = await ensureUserInPublicTable(data.session.user);
 
             if (userData) {
               setUser({
@@ -264,11 +90,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 email: userData.email,
                 role: userData.role,
                 name: userData.name,
+                avatar: userData.avatar,
+                permissions: userData.permissions,
               });
             }
           }
         } else {
-          // Check localStorage for mock session
+          // Check localStorage for session when Supabase is not available
           const storedUser = localStorage.getItem("auth_user");
           if (storedUser) {
             setUser(JSON.parse(storedUser));
@@ -282,29 +110,187 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
+    // Check session immediately
     checkSession();
+
+    // Listen for auth state changes from Supabase
+    const handleAuthChange = async (event: CustomEvent) => {
+      const { session } = event.detail;
+
+      if (session) {
+        // User signed in, update our state
+        const { ensureUserInPublicTable } = await import("../auth-utils");
+        const userData = await ensureUserInPublicTable(session.user);
+
+        if (userData) {
+          setUser({
+            id: userData.id,
+            email: userData.email,
+            role: userData.role,
+            name: userData.name,
+            avatar: userData.avatar,
+            permissions: userData.permissions,
+          });
+        }
+      } else {
+        // User signed out
+        setUser(null);
+      }
+    };
+
+    window.addEventListener(
+      "supabase-auth-state-change",
+      handleAuthChange as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "supabase-auth-state-change",
+        handleAuthChange as EventListener,
+      );
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const result = await authService.login(email, password);
+      console.log("Login attempt for:", email);
+      console.log("Supabase available:", !!supabase);
 
-      if (result.success && result.user) {
-        setUser(result.user);
-        return true;
+      if (supabase) {
+        console.log("Attempting login with Supabase for:", email);
+        console.log("Supabase URL:", import.meta.env.VITE_SUPABASE_URL);
+        console.log(
+          "Supabase Key available:",
+          !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+        );
+
+        // Try Supabase auth
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+          if (error) {
+            console.error("Supabase auth error:", error);
+            console.log("Falling back to mock login");
+            // Fall back to mock login
+            return await mockLoginFallback(email, password);
+          }
+
+          console.log("Supabase login response:", data);
+
+          if (data.user) {
+            console.log("Supabase login successful for user:", data.user.id);
+
+            // Import auth utils dynamically to avoid circular dependencies
+            const { ensureUserInPublicTable, updateUserLoginStats } =
+              await import("../auth-utils");
+
+            // Ensure user exists in public.users table
+            console.log("Ensuring user exists in public.users table");
+            const userData = await ensureUserInPublicTable(data.user);
+
+            if (userData) {
+              console.log(
+                "User found/created in public.users table:",
+                userData,
+              );
+
+              // Update login stats
+              await updateUserLoginStats(userData.id);
+
+              // Set user in state
+              setUser({
+                id: userData.id,
+                email: userData.email,
+                role: userData.role,
+                name: userData.name,
+                avatar: userData.avatar,
+                permissions: userData.permissions,
+              });
+
+              console.log("User state set, login successful");
+
+              // Force a reload of the page to ensure routes recognize the auth state
+              setTimeout(() => {
+                window.location.href = "/";
+              }, 100);
+
+              return true;
+            } else {
+              console.log(
+                "Could not get/create user in public.users table, using minimal user object",
+              );
+              // If we couldn't get or create user data, create a minimal user object
+              setUser({
+                id: data.user.id,
+                email: data.user.email!,
+                name: data.user.user_metadata?.name || email.split("@")[0],
+                role: (data.user.user_metadata?.role || "viewer") as any,
+              });
+
+              console.log("Minimal user state set, login successful");
+
+              // Force a reload of the page to ensure routes recognize the auth state
+              setTimeout(() => {
+                window.location.href = "/";
+              }, 100);
+
+              return true;
+            }
+          } else {
+            console.log("No user returned from Supabase login");
+          }
+        } catch (supabaseError) {
+          console.error("Exception during Supabase login:", supabaseError);
+          console.log("Falling back to mock login after exception");
+          return await mockLoginFallback(email, password);
+        }
+
+        return false;
+      } else {
+        console.log("Supabase not available, using mock login");
+        // Fallback to mock login when Supabase is not available
+        return await mockLoginFallback(email, password);
       }
-
-      return false;
     } catch (error) {
       console.error("Login error:", error);
       return false;
     }
   };
 
+  // Helper function for mock login
+  const mockLoginFallback = async (
+    email: string,
+    password: string,
+  ): Promise<boolean> => {
+    console.log("Using mock login fallback");
+    const mockUsers = JSON.parse(
+      localStorage.getItem("mock_auth_users") || "[]",
+    );
+    const mockUser = mockUsers.find(
+      (u: any) => u.email === email && u.password === password,
+    );
+
+    if (mockUser) {
+      const { password, ...userWithoutPassword } = mockUser;
+      setUser(userWithoutPassword as User);
+      logActivity("auth", "login", "تسجيل دخول", mockUser.id);
+      return true;
+    }
+    return false;
+  };
+
   const logout = async () => {
     try {
       if (user) {
-        await authService.logout(user.id);
+        if (supabase) {
+          await supabaseAuth.signOut(user.id);
+        } else {
+          // Fallback when Supabase is not available
+          logActivity("auth", "logout", "تسجيل خروج", user.id);
+        }
       }
       setUser(null);
     } catch (error) {
@@ -336,5 +322,3 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     </AuthContext.Provider>
   );
 };
-
-// useAuth hook is defined above

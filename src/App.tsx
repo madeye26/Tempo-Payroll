@@ -23,14 +23,44 @@ const ActivityLogsPage = lazy(() => import("./pages/settings/activity-logs"));
 const BackupPage = lazy(() => import("./pages/settings/backup"));
 const SystemSettingsPage = lazy(() => import("./pages/settings/system"));
 const TestConnectionPage = lazy(() => import("./pages/test-connection"));
+const SystemTestPage = lazy(() => import("./pages/system-test"));
+const TestUserCreationPage = lazy(() => import("./pages/test-user-creation"));
 
 function App() {
-  // Initialize localStorage with default data if empty and sync activity logs
+  // Check if user is authenticated
   useEffect(() => {
-    // Import and run the activity log sync
-    import("./lib/sync-activity-logs").then(({ fetchAndMergeActivityLogs }) => {
-      fetchAndMergeActivityLogs();
+    // Check if we're on the login page and there's a stored user
+    const storedUser = localStorage.getItem("auth_user");
+    const isLoginPage = window.location.pathname === "/login";
+
+    if (storedUser && isLoginPage) {
+      // If user is already logged in and on login page, redirect to home
+      window.location.href = "/";
+    }
+  }, []);
+
+  // Initialize localStorage with default data if empty and sync all data
+  useEffect(() => {
+    // Import and run data synchronization
+    import("./lib/sync-data").then(({ syncAllData }) => {
+      syncAllData().then((result) => {
+        console.log("Data sync result:", result);
+      });
     });
+
+    // Set up periodic sync every 5 minutes
+    const syncInterval = setInterval(
+      () => {
+        import("./lib/sync-data").then(({ syncAllData }) => {
+          syncAllData().then((result) => {
+            console.log("Periodic data sync result:", result);
+          });
+        });
+      },
+      5 * 60 * 1000,
+    ); // 5 minutes
+
+    return () => clearInterval(syncInterval);
     // Initialize employees
     if (!localStorage.getItem("employees")) {
       localStorage.setItem(
@@ -332,10 +362,29 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="system-test"
+                element={
+                  <ProtectedRoute requiredPermission="manage_settings">
+                    <SystemTestPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="test-user-creation"
+                element={
+                  <ProtectedRoute requiredPermission="manage_settings">
+                    <TestUserCreationPage />
+                  </ProtectedRoute>
+                }
+              />
               {/* Add the tempobook route to prevent catchall issues */}
               {import.meta.env.VITE_TEMPO === "true" && (
                 <Route path="tempobook/*" />
               )}
+
+              {/* Add a route to the system test page that's easily accessible */}
+              <Route path="system-check" element={<SystemTestPage />} />
             </Route>
 
             {/* Redirect any unknown routes to home */}
