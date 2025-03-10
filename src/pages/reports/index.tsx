@@ -583,7 +583,6 @@ export default function ReportsPage() {
         open={templateBuilderOpen}
         onOpenChange={setTemplateBuilderOpen}
         onSave={handleSaveTemplate}
-        savedTemplates={savedTemplates}
       />
 
       {/* Print Report Dialog */}

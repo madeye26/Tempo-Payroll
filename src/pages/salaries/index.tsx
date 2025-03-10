@@ -189,6 +189,7 @@ export default function SalariesPage() {
           netSalary: salaryToEdit.netSalary.toString(),
           dailyRate: "",
           dailyRateWithIncentives: "",
+          overtimeRate: "",
         });
       }
     }
