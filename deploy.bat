@@ -20,6 +20,7 @@ echo echo Starting Salary Management System... >> deploy\run.bat
 echo cd app >> deploy\run.bat
 echo start http://localhost:4173 >> deploy\run.bat
 echo npx serve -s . >> deploy\run.bat
+echo pause >> deploy\run.bat
 
 :: Create zip file
 echo Creating deployment package...
